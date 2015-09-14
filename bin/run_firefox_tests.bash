@@ -10,6 +10,11 @@ if [ -z "$FIREFOX_BROWSER" ]; then
     exit 1
 fi
 
+if [ -z "$TEST_RUNNER_PARAMS" ]; then
+    echo "Need to set TEST_RUNNER_PARAMS env. var before running run_firefox_tests.bash!"
+    exit 1
+fi
+
 source build_env.bash
 
 echo "Killing any old leftover firefox processes:"
@@ -24,7 +29,7 @@ cp ~/emslave/firefox_profile_template/* ~/emslave/emscripten_firefox_profile/
 export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile $HOME/emslave/emscripten_firefox_profile/"
 
 echo "Running browser tests.."
-python tests/runner.py browser.test_sdl1 $BROWSER_RUN_SKIPS
+python tests/runner.py $TEST_RUNNER_PARAMS
 rc=$?
 echo "Test run finished. Killing any running firefox processes:"
 pkill -9 -x firefox
