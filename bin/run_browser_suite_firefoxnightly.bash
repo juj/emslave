@@ -7,7 +7,7 @@ fi
 
 export FIREFOX_BROWSER="$FIREFOX_NIGHTLY_BROWSER"
 
-export TEST_RUNNER_PARAMS=browser.test_sdl1
+export TEST_RUNNER_PARAMS=browser
 run_firefox_tests.bash
 rc=$?
 exit $rc
