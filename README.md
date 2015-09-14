@@ -27,6 +27,10 @@ Unit test slave configuration for Emscripten compiler buildbot slaves.
 
     echo export PATH=\$PATH:~/emslave/bin > ~/.bash_profile
 
+4. Set FIREFOX_STABLE_BROWSER environment variable, e.g.
+
+    echo export FIREFOX_STABLE_BROWSER=/Applications/Firefox.app/Contents/MacOS/firefox > ~/.bash_profile
+
 # Buildslave startup
 
     cd ~/emslave/buildslave

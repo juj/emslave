@@ -1,6 +1,11 @@
 #!/bin/bash
 
-pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk
+if [ -z "$SLAVE_NAME" ]; then
+    echo "Need to set SLAVE_NAME env. var before running build_env.bash!"
+    exit 1
+fi
+
+pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk > /dev/null
 ./emsdk activate --embedded
 source ./emsdk_env.sh
 popd
@@ -32,11 +37,11 @@ echo "Currently checked out emscripten branch:"
 git log -n1
 
 echo "Currently checked out emscripten-fastcomp branch:"
-pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src
+pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src > /dev/null
 git log -n1
 popd
 
 echo "Currently checked out emscripten-fastcomp-clang branch:"
-pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang
+pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang > /dev/null
 git log -n1
 popd
