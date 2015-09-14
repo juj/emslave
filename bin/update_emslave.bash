@@ -8,18 +8,18 @@ fi
 cd ~/emslave
 git pull
 
-if [ ! -d "~/emslave/buildslave/$SLAVE_NAME" ]; then
-	echo "ERROR: ~/emslave/buildslave/$SLAVE_NAME should exist at this point?!"
+if [ ! -d "$HOME/emslave/buildslave/$SLAVE_NAME" ]; then
+	echo "ERROR: $HOME/emslave/buildslave/$SLAVE_NAME should exist at this point?!"
 	exit 1
 fi
 
-if [ ! -d "~/emslave/buildslave/$SLAVE_NAME/emsdk" ]; then
-	cd ~/emslave/buildslave/$SLAVE_NAME
+if [ ! -d "$HOME/emslave/buildslave/$SLAVE_NAME/emsdk" ]; then
+	cd $HOME/emslave/buildslave/$SLAVE_NAME
 	git clone https://github.com/juj/emsdk/
 	cd emsdk
 fi
 
-cd ~/emslave/buildslave/$SLAVE_NAME/emsdk
+cd $HOME/emslave/buildslave/$SLAVE_NAME/emsdk
 git pull
 ./emsdk install sdk-incoming-64bit
 ./emsdk activate --embedded sdk-incoming-64bit
