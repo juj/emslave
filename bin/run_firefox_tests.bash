@@ -10,7 +10,7 @@ if [ -z "$FIREFOX_BROWSER" ]; then
     exit 1
 fi
 
-build_env.bash
+source build_env.bash
 
 echo "Killing any old leftover firefox processes:"
 pkill -9 -x firefox

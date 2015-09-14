@@ -5,7 +5,7 @@ if [ -z "$SLAVE_NAME" ]; then
     exit 1
 fi
 
-build_env.bash
+source build_env.bash
 
 python tests/runner.py other.test_cxx03
 
