@@ -24,7 +24,7 @@ cp ~/emslave/firefox_profile_template/* ~/emslave/emscripten_firefox_profile/
 export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile ~/emslave/emscripten_firefox_profile/"
 
 echo "Running browser tests.."
-python tests/runner.py browser $BROWSER_RUN_SKIPS
+python tests/runner.py browser.test_sdl1 $BROWSER_RUN_SKIPS
 rc=$?
 echo "Test run finished. Killing any running firefox processes:"
 pkill -9 -x firefox
