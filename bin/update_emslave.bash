@@ -5,6 +5,11 @@ if [ -z "$SLAVE_NAME" ]; then
     exit 1
 fi
 
+if [ -z "$TARGET_EMSCRIPTEN_BRANCH" ]; then
+    echo "Need to set TARGET_EMSCRIPTEN_BRANCH env. var to either 'master' or 'incoming' before running update_emslave.bash!"
+    exit 1
+fi
+
 cd ~/emslave
 git pull
 
@@ -21,5 +26,5 @@ fi
 
 cd $HOME/emslave/buildslave/$SLAVE_NAME/emsdk
 git pull
-./emsdk install sdk-incoming-64bit
-./emsdk activate --embedded sdk-incoming-64bit
+./emsdk install sdk-$TARGET_EMSCRIPTEN_BRANCH-64bit
+./emsdk activate --embedded sdk-$TARGET_EMSCRIPTEN_BRANCH-64bit
