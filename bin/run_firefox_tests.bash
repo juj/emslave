@@ -21,7 +21,7 @@ rm -rf ~/emslave/emscripten_firefox_profile/
 mkdir ~/emslave/emscripten_firefox_profile/
 cp ~/emslave/firefox_profile_template/* ~/emslave/emscripten_firefox_profile/
 
-export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile ~/emslave/emscripten_firefox_profile/"
+export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile $HOME/emslave/emscripten_firefox_profile/"
 
 echo "Running browser tests.."
 python tests/runner.py browser.test_sdl1 $BROWSER_RUN_SKIPS
