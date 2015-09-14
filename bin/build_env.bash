@@ -6,7 +6,6 @@ if [ -z "$SLAVE_NAME" ]; then
 fi
 
 pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk > /dev/null
-./emsdk activate --embedded
 source ./emsdk_env.sh
 popd > /dev/null
 
