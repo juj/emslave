@@ -8,7 +8,7 @@ fi
 pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk > /dev/null
 ./emsdk activate --embedded
 source ./emsdk_env.sh
-popd
+popd > /dev/null
 
 echo "System version information: (uname -a):"
 uname -a
@@ -39,9 +39,9 @@ git log -n1
 echo "Currently checked out emscripten-fastcomp branch:"
 pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src > /dev/null
 git log -n1
-popd
+popd > /dev/null
 
 echo "Currently checked out emscripten-fastcomp-clang branch:"
 pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang > /dev/null
 git log -n1
-popd
+popd > /dev/null
