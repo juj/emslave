@@ -1,27 +1,18 @@
 #!/bin/bash
 
-export NODE=/Users/clb/emsdk/node/0.10.18_64bit/bin
-export PATH=/Users/clb/emsdk/node/0.10.18_64bit/bin:$PATH
-#export SPIDERMONKEY=/home/clb/mozilla-central/obj-x86_64-unknown-linux-gnu/js/src/js
+build_env.bash
 
-echo "System version information: (uname -a):"
-uname -a
-#echo "CPU information:"
-#lscpu
-#echo "Linux distribution:"
-#lsb_release -a
-echo "Node version:"
-which node
-node --version
-echo "Clang version:"
-which clang
-clang --version
-echo "PATH:"
-echo $PATH
-echo "SPIDERMONKEY: "
-echo $SPIDERMONKEY
 echo "Currently checked out emscripten branch:"
-git rev-list --max-count=1 HEAD
+git log -n1
 
-python tests/parallel_test_core.py
+echo "Currently checked out emscripten-fastcomp branch:"
+pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src
+git log -n1
+popd
 
+echo "Currently checked out emscripten-fastcomp-clang branch:"
+pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang
+git log -n1
+popd
+
+python tests/parallel_test_core.py ALL.test_hello_world
