@@ -44,7 +44,8 @@ user_pref('browser.download.panel.shown', true);
 user_pref('browser.customizemode.tip0.shown', true);
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
-user_pref("browser.privatebrowsing.autostart", true);
+// Not currently used in browser runs, since private browsing also prevents IDBFS, which the browser test suite does test.
+//user_pref("browser.privatebrowsing.autostart", true);
 // Don't ask the user if he wants to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
