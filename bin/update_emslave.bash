@@ -33,5 +33,5 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then # Linux
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then # Windows Cygwin
 	export EMSDK_TARGETS="sdk-$TARGET_EMSCRIPTEN_BRANCH-64bit crunch-1.03 node-0.12.2-64bit java-7.45-64bit spidermonkey-nightly-2015-04-12-64bit"
 fi
-./emsdk install $EMSDK_TARGETS
+./emsdk install --build-tests $EMSDK_TARGETS
 ./emsdk activate --embedded $EMSDK_TARGETS
