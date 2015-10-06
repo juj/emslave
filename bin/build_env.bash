@@ -44,3 +44,11 @@ echo "Currently checked out emscripten-fastcomp-clang branch:"
 pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang > /dev/null
 git log -n1
 popd > /dev/null
+
+echo "ENVIRONMENT VARIABLES: "
+echo "- EM_CONFIG: "
+echo $EM_CONFIG
+echo "- EM_CACHE: "
+echo $EM_CACHE
+echo "- EMSCRIPTEN: "
+echo $EMSCRIPTEN
