@@ -27,10 +27,6 @@ node --version
 echo "Clang version:"
 which clang
 clang --version
-echo "PATH:"
-echo $PATH
-echo "SPIDERMONKEY: "
-echo $SPIDERMONKEY
 
 echo "Currently checked out emscripten branch:"
 git log -n1
@@ -52,3 +48,7 @@ echo "- EM_CACHE: "
 echo $EM_CACHE
 echo "- EMSCRIPTEN: "
 echo $EMSCRIPTEN
+echo "- PATH: "
+echo $PATH
+echo "- SPIDERMONKEY: "
+echo $SPIDERMONKEY
