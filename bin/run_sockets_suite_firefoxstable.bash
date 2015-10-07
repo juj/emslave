@@ -7,7 +7,7 @@ fi
 
 export FIREFOX_BROWSER="$FIREFOX_STABLE_BROWSER"
 
-export TEST_RUNNER_PARAMS=sockets
+export TEST_RUNNER_PARAMS=sockets.test_sockets_echo
 run_firefox_tests.bash
 rc=$?
 exit $rc
