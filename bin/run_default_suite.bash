@@ -9,4 +9,4 @@ source build_env.bash
 
 emcc --clear-cache
 
-#python -u tests/parallel_test_core.py
+python -u tests/parallel_test_core.py
