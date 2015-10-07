@@ -28,6 +28,10 @@ cp ~/emslave/firefox_profile_template/* ~/emslave/emscripten_firefox_profile/
 
 export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile $HOME/emslave/emscripten_firefox_profile/"
 
+echo "ENVIRONMENT VARIABLES: "
+echo "- EMSCRIPTEN_BROWSER: "
+echo $EMSCRIPTEN_BROWSER
+
 echo "Running browser tests.."
 python tests/runner.py $TEST_RUNNER_PARAMS skip:browser.test_html_source_map
 rc=$?
