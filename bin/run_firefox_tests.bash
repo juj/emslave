@@ -19,6 +19,7 @@ source build_env.bash
 
 echo "Killing any old leftover firefox processes:"
 pkill -9 -x firefox
+pkill -9 -x Firefox
 
 echo "Removing old Firefox user profile and creating a new one.."
 
@@ -37,6 +38,7 @@ python tests/runner.py $TEST_RUNNER_PARAMS skip:browser.test_html_source_map
 rc=$?
 echo "Test run finished. Killing any running firefox processes:"
 pkill -9 -x firefox
+pkill -9 -x Firefox
 
 exit $rc
 
