@@ -4,7 +4,7 @@ IF "%SLAVE_NAME%"=="" (GOTO error_no_slave_name)
 IF "%SLAVE_ROOT%"=="" (GOTO error_no_slave_root)
 
 pushd %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk
-call emsdk_env.bat
+call emsdk_env.bat --vs2015
 popd
 
 echo "System version information: (ver):"
