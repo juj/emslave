@@ -38,7 +38,7 @@ Unit test slave configuration for Emscripten compiler buildbot slaves.
  - On a clean Ubuntu installation, some apt packages are needed:
 
 
-    sudo apt-get install git buildbot-slave python-pip
+    sudo apt-get install git buildbot-slave python-pip cmake
 
 
  - Since running a buildslave, the following can be removed. The xul- plugins break the test runner if not removed.
