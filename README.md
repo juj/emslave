@@ -35,7 +35,13 @@ Unit test slave configuration for Emscripten compiler buildbot slaves.
 
 # Ubuntu-specific setup
 
-Since running a buildslave, the following can be removed. The xul- plugins break the test runner if not removed.
+ - On a clean Ubuntu installation, some apt packages are needed:
+
+
+    sudo apt-get install git buildbot-slave python-pip
+
+
+ - Since running a buildslave, the following can be removed. The xul- plugins break the test runner if not removed.
 
 
     sudo apt-get -y remove unity-lens-shopping account-plugin-aim account-plugin-facebook account-plugin-flickr account-plugin-google account-plugin-icons account-plugin-identica account-plugin-jabber account-plugin-salut account-plugin-twitter account-plugin-windows-live account-plugin-yahoo gnome-online-accounts unity-control-center-signon xul-ext-webaccounts xul-ext-websites-integration xul-ext-ubufox
