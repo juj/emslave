@@ -36,6 +36,6 @@ elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then # Windows Cygwi
 	export EMSDK_TARGETS="sdk-$TARGET_EMSCRIPTEN_BRANCH-64bit crunch-1.03 java-7.45-64bit spidermonkey-nightly-2015-04-12-64bit"
 fi
 ./emsdk install --build-tests $EMSDK_TARGETS
-rm ~/.emscripten
+rm -f ~/.emscripten || true
 ./emsdk activate --embedded $EMSDK_TARGETS
 echo "This file should not be read, nothing but errors here!" > ~/.emscripten
