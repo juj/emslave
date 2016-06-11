@@ -38,7 +38,7 @@ Unit test slave configuration for Emscripten compiler buildbot slaves.
  - On a clean Ubuntu installation, some apt packages are needed:
 
 
-    sudo apt-get install git buildbot-slave cmake openjdk-9-jre-headless
+    sudo apt-get install git buildbot-slave cmake openjdk-9-jre-headless scons
 
  - You may want to install Firefox via mozdownload to avoid the canonical plugins:
 
