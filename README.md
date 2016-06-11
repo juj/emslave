@@ -38,7 +38,15 @@ Unit test slave configuration for Emscripten compiler buildbot slaves.
  - On a clean Ubuntu installation, some apt packages are needed:
 
 
-    sudo apt-get install git buildbot-slave python-pip cmake
+    sudo apt-get install git buildbot-slave cmake openjdk-9-jre-headless
+
+ - You may want to install Firefox via mozdownload to avoid the canonical plugins:
+
+    sudo apt-get install python-pip
+    pip install mozdownload
+    ~/.local/bin/mozdownload --version=latest
+    tar xjf firefox.tar.bz2
+    # And add FIREFOX_STABLE_BROWSER="$HOME/firefox_stable/firefox" to .profile
 
 
  - Since running a buildslave, the following can be removed. The xul- plugins break the test runner if not removed.
