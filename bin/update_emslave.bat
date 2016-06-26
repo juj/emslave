@@ -22,7 +22,15 @@ set EMSDK_TARGETS=sdk-%TARGET_EMSCRIPTEN_BRANCH%-64bit crunch-1.03 java-7.45-64b
 call emsdk install --vs2015 --build-tests %EMSDK_TARGETS%
 del %userprofile%\.emscripten
 call emsdk activate --vs2015 --embedded %EMSDK_TARGETS%
+
 echo "This file should not be read, nothing but errors here!" > %userprofile%\.emscripten
+
+IF "%EMSCRIPTEN_TEMP%"=="" (GOTO no_emscripten_temp_override)
+
+:: override temp directory in the generated Emscripten configuration file, if the slave has one set in EMSCRIPTEN_TEMP
+python "%SLAVE_ROOT%/bin/find_and_replace.py" .emscripten "TEMP_DIR.*=.*" "TEMP_DIR = \"%EMSCRIPTEN_TEMP%\""
+
+:no_emscripten_temp_override
 
 EXIT /B %ERRORLEVEL%
 
