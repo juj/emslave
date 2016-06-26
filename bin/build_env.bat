@@ -37,6 +37,10 @@ echo "- EM_CACHE: "
 echo %EM_CACHE%
 echo "- EMSCRIPTEN: "
 echo %EMSCRIPTEN%
+echo "- EMSCRIPTEN_TEMP: "
+echo %EMSCRIPTEN_TEMP%
+echo "- EMSCRIPTEN_BROWSER: "
+echo %EMSCRIPTEN_BROWSER%
 echo "- PATH: "
 echo %PATH%
 echo "- SPIDERMONKEY: "
