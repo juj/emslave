@@ -1,8 +1,11 @@
 @echo off
 
-IF "%FIREFOX_STABLE_BROWSER%"=="" (GOTO error_no_firefox_stable_browser)
+echo asdf
+IF [%FIREFOX_STABLE_BROWSER%]==[] (GOTO error_no_firefox_stable_browser)
+echo feaw
 
 set FIREFOX_BROWSER=%FIREFOX_STABLE_BROWSER%
+echo faewf
 
 set TEST_RUNNER_PARAMS=browser
 call run_firefox_tests.bat

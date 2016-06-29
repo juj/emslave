@@ -1,6 +1,6 @@
 @echo off
 
-IF "%FIREFOX_BETA_BROWSER%"=="" (GOTO error_no_firefox_beta_browser)
+IF [%FIREFOX_BETA_BROWSER%]==[] (GOTO error_no_firefox_beta_browser)
 
 set FIREFOX_BROWSER=%FIREFOX_BETA_BROWSER%
 

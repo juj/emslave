@@ -1,6 +1,6 @@
 @echo off
 
-IF "%FIREFOX_AURORA_BROWSER%"=="" (GOTO error_no_firefox_aurora_browser)
+IF [%FIREFOX_AURORA_BROWSER%]==[] (GOTO error_no_firefox_aurora_browser)
 
 set FIREFOX_BROWSER=%FIREFOX_AURORA_BROWSER%
 

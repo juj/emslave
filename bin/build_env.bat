@@ -1,31 +1,31 @@
 @echo off
 
-IF "%SLAVE_NAME%"=="" (GOTO error_no_slave_name)
-IF "%SLAVE_ROOT%"=="" (GOTO error_no_slave_root)
+IF [%SLAVE_NAME%]==[] (GOTO error_no_slave_name)
+IF [%SLAVE_ROOT%]==[] (GOTO error_no_slave_root)
 
 pushd %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk
 call emsdk_env.bat --vs2015
 popd
 
-echo "System version information: (ver):"
+echo System version information: (ver):
 call ver
 
-echo "Node version:"
+echo Node version:
 where node
 node --version
-echo "Clang version:"
+echo Clang version:
 where clang
 clang --version
 
-echo "Currently checked out emscripten branch:"
+echo Currently checked out emscripten branch:
 git log -n1
 
-echo "Currently checked out emscripten-fastcomp branch:"
+echo Currently checked out emscripten-fastcomp branch:
 pushd %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk\clang\fastcomp\src
 git log -n1
 popd
 
-echo "Currently checked out emscripten-fastcomp-clang branch:"
+echo Currently checked out emscripten-fastcomp-clang branch:
 pushd %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk\clang\fastcomp\src\tools\clang
 git log -n1
 popd
