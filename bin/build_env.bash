@@ -5,7 +5,12 @@ if [ -z "$SLAVE_NAME" ]; then
     exit 1
 fi
 
-pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk > /dev/null
+if [ -z "$SLAVE_ROOT" ]; then
+    echo "Need to set SLAVE_ROOT env. var before running build_env.bash!"
+    exit 1
+fi
+
+pushd $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk > /dev/null
 source ./emsdk_env.sh
 popd > /dev/null
 
@@ -32,16 +37,20 @@ echo "Currently checked out emscripten branch:"
 git log -n1
 
 echo "Currently checked out emscripten-fastcomp branch:"
-pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src > /dev/null
+pushd $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src > /dev/null
 git log -n1
 popd > /dev/null
 
 echo "Currently checked out emscripten-fastcomp-clang branch:"
-pushd ~/emslave/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang > /dev/null
+pushd $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/clang/fastcomp/src/tools/clang > /dev/null
 git log -n1
 popd > /dev/null
 
 echo "ENVIRONMENT VARIABLES: "
+echo "- SLAVE_ROOT: "
+echo $SLAVE_ROOT
+echo "- SLAVE_NAME: "
+echo $SLAVE_NAME
 echo "- PATH: "
 echo $PATH
 echo "- EM_CONFIG: "

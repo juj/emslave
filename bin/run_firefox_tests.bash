@@ -5,6 +5,11 @@ if [ -z "$SLAVE_NAME" ]; then
     exit 1
 fi
 
+if [ -z "$SLAVE_ROOT" ]; then
+    echo "Need to set SLAVE_ROOT env. var before running run_firefox_tests.bash!"
+    exit 1
+fi
+
 if [ -z "$FIREFOX_BROWSER" ]; then
     echo "Need to set FIREFOX_BROWSER env. var before running run_firefox_tests.bash!"
     exit 1
@@ -23,9 +28,9 @@ pkill -9 -x Firefox
 
 echo "Removing old Firefox user profile and creating a new one.."
 
-rm -rf ~/emslave/emscripten_firefox_profile/
-mkdir ~/emslave/emscripten_firefox_profile/
-cp ~/emslave/firefox_profile_template/* ~/emslave/emscripten_firefox_profile/
+rm -rf $SLAVE_ROOT/emscripten_firefox_profile/
+mkdir $SLAVE_ROOT/emscripten_firefox_profile/
+cp $SLAVE_ROOT/firefox_profile_template/* $SLAVE_ROOT/emscripten_firefox_profile/
 
 export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile $HOME/emslave/emscripten_firefox_profile/"
 
