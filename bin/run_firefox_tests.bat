@@ -32,7 +32,7 @@ echo Need to set SLAVE_NAME env. var before running run_firefox_tests.bat!
 goto :eof
 
 :error_no_slave_root
-echo Need to set SLAVE_ROOT env. var before running update_emslave.bat!
+echo Need to set SLAVE_ROOT env. var before running run_firefox_tests.bat!
 goto :eof
 
 :error_no_firefox_browser
