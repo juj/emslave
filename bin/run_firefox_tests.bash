@@ -32,7 +32,7 @@ rm -rf $SLAVE_ROOT/emscripten_firefox_profile/
 mkdir $SLAVE_ROOT/emscripten_firefox_profile/
 cp $SLAVE_ROOT/firefox_profile_template/* $SLAVE_ROOT/emscripten_firefox_profile/
 
-export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile $HOME/emslave/emscripten_firefox_profile/"
+export EMSCRIPTEN_BROWSER="$FIREFOX_BROWSER -profile $SLAVE_ROOT/emscripten_firefox_profile/"
 
 echo "ENVIRONMENT VARIABLES: "
 echo "- EMSCRIPTEN_BROWSER: "
