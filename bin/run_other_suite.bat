@@ -4,7 +4,9 @@ IF "%SLAVE_NAME%"=="" (GOTO error_no_slave_name)
 
 call build_env.bat
 
+set EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS=1
 python -u tests/runner.py other
+set EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS=
 
 EXIT /B %ERRORLEVEL%
 

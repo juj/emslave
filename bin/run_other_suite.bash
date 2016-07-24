@@ -7,4 +7,4 @@ fi
 
 source build_env.bash
 
-python -u tests/runner.py other
+EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS=1 python -u tests/runner.py other
