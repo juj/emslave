@@ -4,7 +4,7 @@ IF "%SLAVE_NAME%"=="" (GOTO error_no_slave_name)
 
 call build_env.bat
 
-python tests/runner.py other
+python -u tests/runner.py other
 
 EXIT /B %ERRORLEVEL%
 

@@ -20,7 +20,7 @@ echo ENVIRONMENT VARIABLES:
 echo - EMSCRIPTEN_BROWSER: "%EMSCRIPTEN_BROWSER%"
 
 echo Running browser tests..
-python tests/runner.py %TEST_RUNNER_PARAMS% skip:browser.test_html_source_map
+python -u tests/runner.py %TEST_RUNNER_PARAMS% skip:browser.test_html_source_map
 set RETURNCODE=%ERRORLEVEL%
 echo Test run finished with process exit code %RETURNCODE%. Killing any running firefox processes:
 call taskkill /f /im firefox.exe

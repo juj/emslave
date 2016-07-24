@@ -39,7 +39,7 @@ echo "- EMSCRIPTEN_BROWSER: "
 echo $EMSCRIPTEN_BROWSER
 
 echo "Running browser tests.."
-python tests/runner.py $TEST_RUNNER_PARAMS skip:browser.test_html_source_map
+python -u tests/runner.py $TEST_RUNNER_PARAMS skip:browser.test_html_source_map
 rc=$?
 echo "Test run finished. Killing any running firefox processes:"
 pkill -9 -x firefox

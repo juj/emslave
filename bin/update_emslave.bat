@@ -28,7 +28,7 @@ echo "This file should not be read, nothing but errors here!" > %userprofile%\.e
 IF "%EMSCRIPTEN_TEMP%"=="" (GOTO no_emscripten_temp_override)
 
 :: override temp directory in the generated Emscripten configuration file, if the slave has one set in EMSCRIPTEN_TEMP
-python "%SLAVE_ROOT%/bin/find_and_replace.py" .emscripten "TEMP_DIR.*=.*" "TEMP_DIR = \"%EMSCRIPTEN_TEMP%\""
+python -u "%SLAVE_ROOT%/bin/find_and_replace.py" .emscripten "TEMP_DIR.*=.*" "TEMP_DIR = \"%EMSCRIPTEN_TEMP%\""
 
 :no_emscripten_temp_override
 

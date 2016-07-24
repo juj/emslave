@@ -7,4 +7,4 @@ fi
 
 source build_env.bash
 
-python tests/runner.py other
+python -u tests/runner.py other
