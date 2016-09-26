@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, os, shutil, glob, subprocess, time, platform, optparse
+import sys, os, shutil, glob, subprocess, time, platform, optparse, stat
 
 WINDOWS = False
 LINUX = False
@@ -55,7 +55,7 @@ def which(program, hint_paths=[]):
   return None
 
 # Copies all files from src to dst, but ignores ones with specific suffixes and file basenames
-def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames, dstdir):
+def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames, dstdir, strip_debugging_symbols_on_executables=False):
   for f in os.listdir(srcdir):
     basename, ext = os.path.splitext(f)
     if ext.startswith('.'): ext = ext[1:]
@@ -68,7 +68,15 @@ def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames,
       print 'Creating link ' + os.path.join(dstdir, f) + ' -> ' + linkto
       os.symlink(linkto, os.path.join(dstdir, f))
     elif os.path.isfile(fn):
-      shutil.copyfile(fn, os.path.join(dstdir, f))
+      dst_file = os.path.join(dstdir, f)
+      shutil.copyfile(fn, dst_file)
+      shutil.copymode(fn, dst_file)
+      if not WINDOWS and strip_debugging_symbols_on_executables and (stat.S_IXUSR & os.stat(dst_file)[stat.ST_MODE]):
+        print 'Stripping debug info from file ' + dst_file
+        try:
+          subprocess.check_call(['strip', dst_file])
+        except:
+          pass
 
 def copy_all_files_in_dir(srcdir, dstdir):
   blacklisted_copy_all_files_in_dir(srcdir, [], [], dstdir)
@@ -106,7 +114,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   if not os.path.isfile(os.path.join(llvm_binary_dir, exe_suffix('clang'))):
     llvm_binary_dir = os.path.join(llvm_build_dir, 'bin')
 
-  blacklisted_copy_all_files_in_dir(llvm_binary_dir, ignored_suffixes, ignored_basenames, output_dir)
+  blacklisted_copy_all_files_in_dir(llvm_binary_dir, ignored_suffixes, ignored_basenames, output_dir, strip_debugging_symbols_on_executables=True)
 
   # VS2015 runtime:
   if WINDOWS:
