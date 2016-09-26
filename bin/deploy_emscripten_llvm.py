@@ -227,7 +227,15 @@ def main():
   llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
   if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
   if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
-  output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M"))
+
+  # Compute the time of the most recent git changes to timestamp the generated build
+  git = which('git')
+  emscripten_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
+  llvm_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
+  clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
+  newest_time = max(emscripten_git_time, llvm_git_time, clang_git_time)
+
+  output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
   if os.path.isdir(output_dir):
     shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
 
