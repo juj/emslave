@@ -1,4 +1,4 @@
-import sys, os, shutil, glob, subprocess, time, platform
+import sys, os, shutil, glob, subprocess, time, platform, optparse
 
 WINDOWS = False
 LINUX = False
@@ -6,6 +6,10 @@ OSX = False
 if os.name == 'nt': WINDOWS = True
 if platform.system() == 'Linux': LINUX = True
 if platform.mac_ver()[0] != '': OSX = True
+
+def exe_suffix(path):
+  if WINDOWS: return path + '.exe'
+  else: return path
 
 # http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
 def mkdir_p(path):
@@ -57,7 +61,11 @@ def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames,
     if basename in ignore_basenames: continue
 
     fn = os.path.join(srcdir, f)
-    if os.path.isfile(fn):
+    if os.path.islink(fn):
+      linkto = os.readlink(fn)
+      print 'Creating link ' + os.path.join(dstdir, f) + ' -> ' + linkto
+      os.symlink(linkto, os.path.join(dstdir, f))
+    elif os.path.isfile(fn):
       shutil.copyfile(fn, os.path.join(dstdir, f))
 
 def copy_all_files_in_dir(srcdir, dstdir):
@@ -66,10 +74,11 @@ def copy_all_files_in_dir(srcdir, dstdir):
 def upload_to_s3(filename, out_s3_addr):
   cmd = ['aws', 's3', 'cp', filename, out_s3_addr]
   print 'Uploading ' + filename + ' to ' + out_s3_addr + '...'
-  subprocess.call(cmd)
+  print str(cmd)
+  subprocess.check_call(cmd)
   print 'Done.'
 
-def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_deployment_url, deploy_x64):
+def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_deployment_url, deploy_x64, options):
   # Verify that versions match.
   llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
   print 'LLVM version: ' + llvm_version
@@ -89,7 +98,13 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
   ignored_suffixes = ['ilk', 'pdb']
   ignored_basenames = ['arcmt-test', 'bugpoint', 'c-arcmt-test', 'c-index-text', 'llvm-tblgen', 'clang-tblgen']
-  blacklisted_copy_all_files_in_dir(os.path.join(llvm_build_dir, cmake_config_to_deploy, 'bin'), ignored_suffixes, ignored_basenames, output_dir)
+  # The LLVM build output binaries directory varies depending on if a CMake multigenerator was used (VS2015 or Xcode IDEs), or if a CMake single-generator was used (Unix Makefiles)
+  # Try both forms.
+  llvm_binary_dir = os.path.join(llvm_build_dir, cmake_config_to_deploy, 'bin')
+  if not os.path.isfile(os.path.join(llvm_binary_dir, exe_suffix('clang'))):
+    llvm_binary_dir = os.path.join(llvm_build_dir, 'bin')
+
+  blacklisted_copy_all_files_in_dir(llvm_binary_dir, ignored_suffixes, ignored_basenames, output_dir)
 
   # VS2015 runtime:
   if WINDOWS:
@@ -102,7 +117,11 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
       copy_all_files_in_dir('C:\\Program Files (x86)\\Windows Kits\\10\\Redist\\ucrt\\DLLs\\x86', output_dir)
 
   # Emscripten Optimizer
-  blacklisted_copy_all_files_in_dir(os.path.join(optimizer_build_dir, cmake_config_to_deploy), ignored_suffixes, [], output_dir)
+  emscripten_optimizer_binary_dir = os.path.join(optimizer_build_dir, cmake_config_to_deploy)
+  if not os.path.isfile(os.path.join(emscripten_optimizer_binary_dir, exe_suffix('optimizer'))):
+    emscripten_optimizer_binary_dir = os.path.join(optimizer_build_dir)
+
+  blacklisted_copy_all_files_in_dir(emscripten_optimizer_binary_dir, ignored_suffixes, [], output_dir)
 
   # Binaryen
   print "TODO: Deploy Binaryen"
@@ -130,52 +149,93 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
 
   if WINDOWS:
     cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', zip_filename, os.path.join(output_dir, '*')]
-    print str(cmd)
-    subprocess.call(cmd)
   else:
-    print 'TODO: Zip up'
+    # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
+    cmd = ['tar', 'cvhf', zip_filename, output_dir]
+  print str(cmd)
+  subprocess.call(cmd)
 
   shutil.copyfile(zip_filename, canonical_zip_filename)
 
+  def url_join(u, f):
+    if u.endswith('/'): return u + f
+    else: return u + '/' + f
+
   if s3_deployment_url:
-    upload_to_s3(zip_filename, s3_deployment_url)
-    upload_to_s3(canonical_zip_filename, s3_deployment_url)
+    zip_url = url_join(s3_deployment_url, os.path.basename(zip_filename))
+    upload_to_s3(zip_filename, zip_url)
+
+    # Link the latest uploaded file under the canonical name as well:
+    upload_to_s3(zip_url, url_join(s3_deployment_url, os.path.basename(canonical_zip_filename)))
+
+    if options.delete_uploaded_files:
+      print 'Deleting temporary directory "' + output_dir + '"'
+      shutil.rmtree(output_dir)
+      print 'Deleting temporary file "' + zip_filename + '"'
+      os.remove(zip_filename)
+      print 'Deleting temporary file "' + canonical_zip_filename + '"'
+      os.remove(canonical_zip_filename)
 
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
 
-deploy_x64 = True
-emsdk_dir = 'C:/code/emsdk'
-llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'fastcomp', 'src')
-llvm_build_dirname = 'build_incoming'
-optimizer_build_dirname = 'incoming'
+def main():
+  usage_str = 'Usage: deploy_emscripten_llvm.py '
+  parser = optparse.OptionParser(usage=usage_str)
 
-if WINDOWS: s3_subdirectory = 'win'
-elif LINUX: s3_subdirectory = 'linux'
-elif OSX: s3_subdirectory = 'osx'
-if WINDOWS:
-  llvm_build_dirname += '_vs2015'
-  optimizer_build_dirname += '_vs2015'
-if deploy_x64:
-  llvm_build_dirname += '_64'
-  optimizer_build_dirname += '_64bit'
-  s3_subdirectory += '_64bit'
-else:
-  llvm_build_dirname += '_32'
-  optimizer_build_dirname += '_32bit'
-  s3_subdirectory += '_32bit'
-optimizer_build_dirname += '_optimizer'
+  parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
+  parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
+  parser.add_option('--cmake_config', dest='cmake_config', default='', help='Specifies the CMake build configuration type to deploy (Debug, Release, RelWithDebInfo or MinSizeRel)')
+  parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
 
-llvm_build_dir = os.path.join(emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
-emscripten_source_dir = os.path.join(emsdk_dir, 'emscripten', 'incoming')
-optimizer_build_dir = os.path.join(emsdk_dir, 'emscripten', optimizer_build_dirname)
-binaryen_build_dir = ''
-llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
-if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
-if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
-output_dir = os.path.join(emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M"))
+  (options, args) = parser.parse_args(sys.argv)
 
-cmake_config_to_deploy = 'RelWithDebInfo'
+  if not options.emsdk_dir:
+    print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
+    sys.exit(1)
+  if not os.path.isfile(os.path.join(options.emsdk_dir, 'emsdk')):
+    print >> sys.stderr, '--emsdk_dir "' + options.emsdk_dir + '" does not point to a correct emsdk root directory (expected it to contain the file "emsdk")'
+    sys.exit(1)
 
-s3_deployment_url = 'https://s3.amazonaws.com/mozilla-games/emscripten/packages/nightly/' + s3_subdirectory
+  if not options.cmake_config:
+    print >> sys.stderr, 'Please specfiy --cmake_config Debug|Release|RelWithDebInfo|MinSizeRel'
+    sys.exit(1)
 
-deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_deployment_url, deploy_x64)
+  llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
+  llvm_build_dirname = 'build_incoming'
+  optimizer_build_dirname = 'incoming'
+
+  if WINDOWS: s3_subdirectory = 'win'
+  elif LINUX: s3_subdirectory = 'linux'
+  elif OSX: s3_subdirectory = 'osx'
+  if WINDOWS:
+    llvm_build_dirname += '_vs2015'
+    optimizer_build_dirname += '_vs2015'
+  if options.deploy_32bit:
+    llvm_build_dirname += '_32'
+    optimizer_build_dirname += '_32bit'
+    s3_subdirectory += '_32bit'
+  else:
+    llvm_build_dirname += '_64'
+    optimizer_build_dirname += '_64bit'
+    s3_subdirectory += '_64bit'
+  optimizer_build_dirname += '_optimizer'
+
+  llvm_build_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
+  emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', 'incoming')
+  optimizer_build_dir = os.path.join(options.emsdk_dir, 'emscripten', optimizer_build_dirname)
+  binaryen_build_dir = ''
+  llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
+  if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
+  if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
+  output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M"))
+  if os.path.isdir(output_dir):
+    shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
+
+  s3_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
+
+  deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_deployment_url, not options.deploy_32bit, options)
+
+  return 0
+
+if __name__ == '__main__':
+  sys.exit(main())
