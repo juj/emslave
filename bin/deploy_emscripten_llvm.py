@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sys, os, shutil, glob, subprocess, time, platform, optparse
 
 WINDOWS = False
