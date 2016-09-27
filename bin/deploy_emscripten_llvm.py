@@ -171,7 +171,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   if proc.returncode != 0:
     raise Exception('Compression step failed!')
 
-  print zip_filename + ': ' + os.path.getsize(zip_filename) + ' bytes.'
+  print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
   shutil.copyfile(zip_filename, canonical_zip_filename)
 
   def url_join(u, f):
