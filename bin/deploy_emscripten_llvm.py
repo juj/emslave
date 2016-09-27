@@ -166,7 +166,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   print str(cmd)
   env = os.environ.copy()
   env['GZIP'] = '-9' # http://superuser.com/questions/514260/how-to-obtain-maximum-compression-with-tar-gz
-  proc = Popen(cmd, env=env)
+  proc = subprocess.Popen(cmd, env=env)
   proc.communicate()
   if proc.returncode != 0:
     raise Exception('Compression step failed!')
