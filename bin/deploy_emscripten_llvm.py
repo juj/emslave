@@ -162,9 +162,14 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
     cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', zip_filename, os.path.join(output_dir, '*')]
   else:
     # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
-    cmd = ['tar', 'cvhf', zip_filename, output_dir]
+    cmd = ['tar', 'cvhzf', zip_filename, output_dir]
   print str(cmd)
-  subprocess.call(cmd)
+  env = os.environ.copy()
+  env['GZIP'] = '-9' # http://superuser.com/questions/514260/how-to-obtain-maximum-compression-with-tar-gz
+  proc = Popen(cmd, env=env)
+  proc.communicate()
+  if proc.returncode != 0:
+    raise Exception('Compression step failed!')
 
   shutil.copyfile(zip_filename, canonical_zip_filename)
 
