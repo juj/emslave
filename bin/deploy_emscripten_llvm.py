@@ -99,6 +99,8 @@ def zip_up_directory(directory, output_file, exclude_patterns=[]):
     for p in exclude_patterns: exclude_args += ['-x!' + p]
     cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', output_file, os.path.join(directory, '*'), '-mx9'] + exclude_args # mx9=Ultra compression
   else:
+    exclude_args = []
+    for p in exclude_patterns: exclude_args += ["--exclude='" + p + "'"]
     # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
     cmd = ['tar', 'cvhzf', output_file, directory]
   print str(cmd)
