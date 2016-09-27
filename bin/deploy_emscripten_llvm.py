@@ -70,7 +70,8 @@ def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames,
     elif os.path.isfile(fn):
       dst_file = os.path.join(dstdir, f)
       shutil.copyfile(fn, dst_file)
-      shutil.copymode(fn, dst_file)
+      if not WINDOWS: # On Windows the file read only bits from DLLs in Program Files are copied, which is not desirable.
+        shutil.copymode(fn, dst_file)
       if not WINDOWS and strip_debugging_symbols_on_executables and (stat.S_IXUSR & os.stat(dst_file)[stat.ST_MODE]):
         print 'Stripping debug info from file ' + dst_file
         try:
@@ -202,6 +203,8 @@ def main():
   if not options.emsdk_dir:
     print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
     sys.exit(1)
+  options.emsdk_dir = os.path.abspath(options.emsdk_dir)
+  print 'Path to emsdk: ' + options.emsdk_dir
   if not os.path.isfile(os.path.join(options.emsdk_dir, 'emsdk')):
     print >> sys.stderr, '--emsdk_dir "' + options.emsdk_dir + '" does not point to a correct emsdk root directory (expected it to contain the file "emsdk")'
     sys.exit(1)
