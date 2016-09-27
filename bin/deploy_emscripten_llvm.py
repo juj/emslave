@@ -159,7 +159,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   if os.path.isfile(canonical_zip_filename): os.remove(canonical_zip_filename)
 
   if WINDOWS:
-    cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', zip_filename, os.path.join(output_dir, '*')]
+    cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', zip_filename, os.path.join(output_dir, '*'), '-mx9'] # mx9=Ultra compression
   else:
     # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
     cmd = ['tar', 'cvhzf', zip_filename, output_dir]
