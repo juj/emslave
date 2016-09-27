@@ -89,7 +89,31 @@ def upload_to_s3(filename, out_s3_addr):
   subprocess.check_call(cmd)
   print 'Done.'
 
-def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_deployment_url, deploy_x64, options):
+def add_zip_suffix(path):
+  if WINDOWS: return path + '.zip'
+  else: return path + '.tar.gz'
+
+def zip_up_directory(directory, output_file, exclude_patterns=[]):
+  if WINDOWS:
+    exclude_args = []
+    for p in exclude_patterns: exclude_args += ['-x!' + p]
+    cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', output_file, os.path.join(directory, '*'), '-mx9'] + exclude_args # mx9=Ultra compression
+  else:
+    # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
+    cmd = ['tar', 'cvhzf', output_file, directory]
+  print str(cmd)
+  env = os.environ.copy()
+  env['GZIP'] = '-9' # http://superuser.com/questions/514260/how-to-obtain-maximum-compression-with-tar-gz
+  proc = subprocess.Popen(cmd, env=env)
+  proc.communicate()
+  if proc.returncode != 0:
+    raise Exception('Compression step failed!')
+
+def url_join(u, f):
+  if u.endswith('/'): return u + f
+  else: return u + '/' + f
+
+def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_llvm_deployment_url, deploy_x64, options):
   # Verify that versions match.
   llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
   print 'LLVM version: ' + llvm_version
@@ -143,57 +167,60 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   open(os.path.join(output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
   open(os.path.join(output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
 
-  # Zip up
+  # Zip up LLVM
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
-  canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-llvm-latest')
-  if WINDOWS:
-    zip_filename += '.zip'
-    canonical_zip_filename += '.zip'
-  else:
-    zip_filename += '.tar.gz'
-    canonical_zip_filename += '.tar.gz'
-
+  zip_filename = add_zip_suffix(zip_filename)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
-  if os.path.isfile(canonical_zip_filename): os.remove(canonical_zip_filename)
-
-  if WINDOWS:
-    cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', zip_filename, os.path.join(output_dir, '*'), '-mx9'] # mx9=Ultra compression
-  else:
-    # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
-    cmd = ['tar', 'cvhzf', zip_filename, output_dir]
-  print str(cmd)
-  env = os.environ.copy()
-  env['GZIP'] = '-9' # http://superuser.com/questions/514260/how-to-obtain-maximum-compression-with-tar-gz
-  proc = subprocess.Popen(cmd, env=env)
-  proc.communicate()
-  if proc.returncode != 0:
-    raise Exception('Compression step failed!')
-
+  zip_up_directory(output_dir, zip_filename)
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
-  shutil.copyfile(zip_filename, canonical_zip_filename)
 
-  def url_join(u, f):
-    if u.endswith('/'): return u + f
-    else: return u + '/' + f
-
-  if s3_deployment_url:
-    zip_url = url_join(s3_deployment_url, os.path.basename(zip_filename))
+  # Upload LLVM
+  if s3_llvm_deployment_url:
+    zip_url = url_join(s3_llvm_deployment_url, os.path.basename(zip_filename))
     upload_to_s3(zip_filename, zip_url)
 
     # Link the latest uploaded file under the canonical name as well:
-    upload_to_s3(zip_url, url_join(s3_deployment_url, os.path.basename(canonical_zip_filename)))
+    canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-llvm-latest')
+    canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
+    upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)))
 
     if options.delete_uploaded_files:
       print 'Deleting temporary directory "' + output_dir + '"'
       shutil.rmtree(output_dir)
       print 'Deleting temporary file "' + zip_filename + '"'
       os.remove(zip_filename)
-      print 'Deleting temporary file "' + canonical_zip_filename + '"'
-      os.remove(canonical_zip_filename)
 
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
+
+def deploy_emscripten(emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options):
+  zip_filename = emscripten_output_dir
+  if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
+  zip_filename = add_zip_suffix(zip_filename)
+  print 'Zipping up "' + zip_filename + '"'
+  if os.path.isfile(zip_filename): os.remove(zip_filename)
+
+  if options.git_clean:
+    print 'Git cleaning Emscripten directory for zipping it up..'
+    subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
+    time.sleep(3)
+  zip_up_directory(emscripten_source_dir, zip_filename, ['.git', 'node_modules', 'third_party/lzma.js/', '*.pyc'])
+  print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
+
+  # Upload Emscripten
+  if s3_emscripten_deployment_url:
+    zip_url = url_join(s3_emscripten_deployment_url, os.path.basename(zip_filename))
+    upload_to_s3(zip_filename, zip_url)
+
+    # Link the latest uploaded file under the canonical name as well:
+    canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-latest')
+    canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
+    upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)))
+
+    if options.delete_uploaded_files:
+      print 'Deleting temporary file "' + zip_filename + '"'
+      os.remove(zip_filename)
 
 def main():
   usage_str = 'Usage: deploy_emscripten_llvm.py '
@@ -201,6 +228,7 @@ def main():
 
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
   parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
+  parser.add_option('--git_clean', dest='git_clean', action='store_true', default=False, help='If true, performs a "git clean -xdf" operation on the directory before zipping it up.')
   parser.add_option('--cmake_config', dest='cmake_config', default='', help='Specifies the CMake build configuration type to deploy (Debug, Release, RelWithDebInfo or MinSizeRel)')
   parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
 
@@ -226,6 +254,9 @@ def main():
   if WINDOWS: s3_subdirectory = 'win'
   elif LINUX: s3_subdirectory = 'linux'
   elif OSX: s3_subdirectory = 'osx'
+
+  s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + s3_subdirectory
+
   if WINDOWS:
     llvm_build_dirname += '_vs2015'
     optimizer_build_dirname += '_vs2015'
@@ -258,9 +289,14 @@ def main():
   if os.path.isdir(output_dir):
     shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
 
-  s3_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
+  s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
 
-  deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_deployment_url, not options.deploy_32bit, options)
+  deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
+
+  if not OSX: # Not needed to upload on OS X, since OS X and Linux can share the same one.
+    emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
+
+    deploy_emscripten(emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options)
 
   return 0
 
