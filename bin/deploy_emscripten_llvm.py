@@ -218,7 +218,7 @@ def deploy_emscripten(emscripten_source_dir, emscripten_output_dir, s3_emscripte
     # Link the latest uploaded file under the canonical name as well:
     canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-latest')
     canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
-    upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)))
+    upload_to_s3(zip_url, url_join(s3_emscripten_deployment_url, os.path.basename(canonical_zip_filename)))
 
     if options.delete_uploaded_files:
       print 'Deleting temporary file "' + zip_filename + '"'
