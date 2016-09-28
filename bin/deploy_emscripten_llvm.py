@@ -223,7 +223,21 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
 
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
 
-def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options):
+def deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url):
+  # Make and upload documentation if desired.
+  subprocess.Popen(['make', 'text'], cwd=os.path.join(emscripten_output_dir, 'site')).communicate()
+  subprocess.Popen(['make', 'html'], cwd=os.path.join(emscripten_output_dir, 'site')).communicate()
+
+  cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'build', 'text', '*'), url_join(s3_docs_deployment_url, 'text')]
+  print str(cmd)
+  subprocess.check_call(cmd)
+
+  cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'build', 'html', '*'), url_join(s3_docs_deployment_url, 'html')]
+  print str(cmd)
+  subprocess.check_call(cmd)
+
+
+def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
     print 'Git cleaning Emscripten directory for zipping it up..'
     subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
@@ -245,6 +259,9 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   open(os.path.join(emscripten_output_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
   open(os.path.join(emscripten_output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
   open(os.path.join(emscripten_output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
+
+  if options.make_and_deploy_docs:
+    deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url)
 
   # Upload Emscripten
   if s3_emscripten_deployment_url:
@@ -274,6 +291,7 @@ def main():
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
   parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
   parser.add_option('--git_clean', dest='git_clean', action='store_true', default=False, help='If true, performs a "git clean -xdf" operation on the directory before zipping it up.')
+  parser.add_option('--make_and_deploy_docs', dest='make_and_deploy_docs', action='store_true', default=False, help='If true, Emscripten documentation is built and uploaded to S3 Nightly documentation site as well.')
   parser.add_option('--cmake_config', dest='cmake_config', default='', help='Specifies the CMake build configuration type to deploy (Debug, Release, RelWithDebInfo or MinSizeRel)')
   parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
 
@@ -336,12 +354,14 @@ def main():
 
   s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
 
+  s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/'
+
   deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
 
   if not OSX: # Not needed to upload on OS X, since OS X and Linux can share the same one.
     emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
 
-    deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options)
+    deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
 
   return 0
 
