@@ -357,7 +357,7 @@ def main():
 
   s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
 
-  s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/'
+  s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
 
   s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
 
