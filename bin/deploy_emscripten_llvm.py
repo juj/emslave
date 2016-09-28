@@ -228,11 +228,11 @@ def deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url):
   subprocess.Popen(['make', 'text'], cwd=os.path.join(emscripten_output_dir, 'site')).communicate()
   subprocess.Popen(['make', 'html'], cwd=os.path.join(emscripten_output_dir, 'site')).communicate()
 
-  cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'build', 'text', '*'), url_join(s3_docs_deployment_url, 'text')]
+  cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'site', 'build', 'text'), url_join(s3_docs_deployment_url, 'text')]
   print str(cmd)
   subprocess.check_call(cmd)
 
-  cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'build', 'html', '*'), url_join(s3_docs_deployment_url, 'html')]
+  cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'site', 'build', 'html'), url_join(s3_docs_deployment_url, 'html')]
   print str(cmd)
   subprocess.check_call(cmd)
 
