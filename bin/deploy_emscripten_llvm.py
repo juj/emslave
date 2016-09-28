@@ -265,7 +265,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   # Re-create directory index in the uploaded directory.
   create_directory_index(s3_emscripten_deployment_url)
 
-  print 'Done. Emscripten deployed to "' + output_dir + '".'
+  print 'Done. Emscripten deployed to "' + emscripten_output_dir + '".'
 
 def main():
   usage_str = 'Usage: deploy_emscripten_llvm.py '
