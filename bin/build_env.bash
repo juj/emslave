@@ -73,3 +73,6 @@ echo "- FIREFOX_AURORA_BROWSER: "
 echo $FIREFOX_AURORA_BROWSER
 echo "- FIREFOX_NIGHTLY_BROWSER: "
 echo $FIREFOX_NIGHTLY_BROWSER
+
+echo "Setting unbuffered python mode.."
+export PYTHONUNBUFFERED=1
