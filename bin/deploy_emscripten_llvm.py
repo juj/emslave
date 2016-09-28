@@ -243,7 +243,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
     subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
     time.sleep(3)
 
-  shutil.copytree(emscripten_source_dir, emscripten_output_dir)
+  shutil.copytree(emscripten_source_dir, emscripten_output_dir, shutil.ignore_patterns('.git'))
 
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
@@ -291,6 +291,8 @@ def main():
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
   parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
   parser.add_option('--git_clean', dest='git_clean', action='store_true', default=False, help='If true, performs a "git clean -xdf" operation on the directory before zipping it up.')
+  parser.add_option('--deploy_llvm', dest='deploy_llvm', action='store_true', default=False, help='If true, deploys Emscripten fastcomp LLVM+Clang to S3')
+  parser.add_option('--deploy_emscripten', dest='deploy_emscripten', action='store_true', default=False, help='If true, deploys Emscripten to S3')
   parser.add_option('--make_and_deploy_docs', dest='make_and_deploy_docs', action='store_true', default=False, help='If true, Emscripten documentation is built and uploaded to S3 Nightly documentation site as well.')
   parser.add_option('--cmake_config', dest='cmake_config', default='', help='Specifies the CMake build configuration type to deploy (Debug, Release, RelWithDebInfo or MinSizeRel)')
   parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
@@ -317,8 +319,6 @@ def main():
   if WINDOWS: s3_subdirectory = 'win'
   elif LINUX: s3_subdirectory = 'linux'
   elif OSX: s3_subdirectory = 'osx'
-
-  s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + s3_subdirectory
 
   if WINDOWS:
     llvm_build_dirname += '_vs2015'
@@ -356,9 +356,12 @@ def main():
 
   s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/'
 
-  deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
+  s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
 
-  if not OSX: # Not needed to upload on OS X, since OS X and Linux can share the same one.
+  if options.deploy_llvm:
+    deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
+
+  if options.deploy_emscripten:
     emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
 
     deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
