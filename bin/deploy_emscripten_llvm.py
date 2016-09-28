@@ -224,17 +224,20 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options):
+  if options.git_clean:
+    print 'Git cleaning Emscripten directory for zipping it up..'
+    subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
+    time.sleep(3)
+
+  shutil.copytree(emscripten_source_dir, emscripten_output_dir)
+
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
   zip_filename = add_zip_suffix(zip_filename)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
 
-  if options.git_clean:
-    print 'Git cleaning Emscripten directory for zipping it up..'
-    subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
-    time.sleep(3)
-  zip_up_directory(emscripten_source_dir, zip_filename, ['.git', 'node_modules', 'third_party/lzma.js/', '*.pyc'])
+  zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'node_modules', 'third_party/lzma.js/', '*.pyc'])
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
   # Print git commit versions from each repository
@@ -254,6 +257,8 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
     upload_to_s3(zip_url, url_join(s3_emscripten_deployment_url, os.path.basename(canonical_zip_filename)))
 
     if options.delete_uploaded_files:
+      print 'Deleting temporary directory "' + emscripten_output_dir + '"'
+      shutil.rmtree(emscripten_output_dir)
       print 'Deleting temporary file "' + zip_filename + '"'
       os.remove(zip_filename)
 
