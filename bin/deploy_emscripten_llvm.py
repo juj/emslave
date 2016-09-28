@@ -102,11 +102,11 @@ def zip_up_directory(directory, output_file, exclude_patterns=[]):
     exclude_args = []
     for p in exclude_patterns: exclude_args += ["--exclude=" + p]
     # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
-    cmd = ['tar', 'cvhzf', output_file] + exclude_args + [directory]
+    cmd = ['tar', 'cvhzf', output_file] + exclude_args + [os.path.basename(directory)]
   print str(cmd)
   env = os.environ.copy()
   env['GZIP'] = '-9' # http://superuser.com/questions/514260/how-to-obtain-maximum-compression-with-tar-gz
-  proc = subprocess.Popen(cmd, env=env)
+  proc = subprocess.Popen(cmd, env=env, cwd=os.path.dirname(directory))
   proc.communicate()
   if proc.returncode != 0:
     raise Exception('Compression step failed!')
