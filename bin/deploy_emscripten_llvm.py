@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, os, shutil, glob, subprocess, time, platform, optparse, stat
+import sys, os, shutil, glob, subprocess, time, platform, optparse, stat, re
 
 WINDOWS = False
 LINUX = False
@@ -115,6 +115,30 @@ def url_join(u, f):
   if u.endswith('/'): return u + f
   else: return u + '/' + f
 
+def list_files_in_s3_directory(directory):
+  if not directory.endswith('/'): directory += '/'
+  cmd = ['aws', 's3', 'ls', directory]
+  print str(cmd)
+  files = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0]
+  r = re.compile('\d+-\d+-\d+\s+\d+:\d+:\d+\s+\d+\s+(.*)')
+
+  file_list = []
+  for f in files.split('\n'):
+    m = r.match(f.strip())
+    if m:
+      file_list += [m.group(1).strip()]
+  return file_list
+
+def create_directory_index(url):
+  files = list_files_in_s3_directory(url)
+  files = filter(lambda x: x.endswith('.tar.gz') or x.endswith('.zip'), files)
+
+  # Sort the files on descending timestamps. This is possible without a specical predicate, because the files in the directory have exactly same format with descending fixed space fields Y -> M -> D -> H -> Min.
+  files.sort(reverse=True)
+
+  open('index.txt', 'w').write('\n'.join(files))
+  upload_to_s3('index.txt', url_join(url, 'index.txt'))
+
 def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_llvm_deployment_url, deploy_x64, options):
   # Verify that versions match.
   llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
@@ -194,6 +218,9 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
       print 'Deleting temporary file "' + zip_filename + '"'
       os.remove(zip_filename)
 
+  # Re-create directory index in the uploaded directory.
+  create_directory_index(s3_llvm_deployment_url)
+
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options):
@@ -229,6 +256,11 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
     if options.delete_uploaded_files:
       print 'Deleting temporary file "' + zip_filename + '"'
       os.remove(zip_filename)
+
+  # Re-create directory index in the uploaded directory.
+  create_directory_index(s3_emscripten_deployment_url)
+
+  print 'Done. Emscripten deployed to "' + output_dir + '".'
 
 def main():
   usage_str = 'Usage: deploy_emscripten_llvm.py '
