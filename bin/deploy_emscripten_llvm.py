@@ -243,6 +243,8 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
     subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
     time.sleep(3)
 
+  if os.path.isdir(emscripten_output_dir):
+    shutil.rmtree(emscripten_output_dir)
   shutil.copytree(emscripten_source_dir, emscripten_output_dir, shutil.ignore_patterns('.git'))
 
   zip_filename = emscripten_output_dir
