@@ -245,7 +245,8 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
 
   if os.path.isdir(emscripten_output_dir):
     shutil.rmtree(emscripten_output_dir)
-  shutil.copytree(emscripten_source_dir, emscripten_output_dir, shutil.ignore_patterns('.git'))
+  IGNORE_PATTERNS = ('*.pyc','^.git')
+  shutil.copytree(emscripten_source_dir, emscripten_output_dir, ignore=shutil.ignore_patterns(IGNORE_PATTERNS))
 
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
