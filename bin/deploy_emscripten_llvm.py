@@ -196,7 +196,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
 
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
 
-def deploy_emscripten(emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options):
+def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options):
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
   zip_filename = add_zip_suffix(zip_filename)
@@ -209,6 +209,12 @@ def deploy_emscripten(emscripten_source_dir, emscripten_output_dir, s3_emscripte
     time.sleep(3)
   zip_up_directory(emscripten_source_dir, zip_filename, ['.git', 'node_modules', 'third_party/lzma.js/', '*.pyc'])
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
+
+  # Print git commit versions from each repository
+  git = which('git')
+  open(os.path.join(emscripten_output_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
+  open(os.path.join(emscripten_output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
+  open(os.path.join(emscripten_output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
 
   # Upload Emscripten
   if s3_emscripten_deployment_url:
@@ -298,7 +304,7 @@ def main():
   if not OSX: # Not needed to upload on OS X, since OS X and Linux can share the same one.
     emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
 
-    deploy_emscripten(emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options)
+    deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, options)
 
   return 0
 
