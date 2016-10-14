@@ -4,7 +4,7 @@ IF "%SLAVE_NAME%"=="" (GOTO error_no_slave_name)
 
 call build_env.bat
 
-call python -u check.py --no-test-waterfall --no-abort-on-first-failure --no-run-gcc-tests
+call python -u %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk\binaryen\master\check.py --no-test-waterfall --no-abort-on-first-failure --no-run-gcc-tests
 
 EXIT /B %ERRORLEVEL%
 

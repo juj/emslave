@@ -7,4 +7,4 @@ fi
 
 source build_env.bash
 
-python -u check.py --no-test-waterfall --no-abort-on-first-failure
+python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-test-waterfall --no-abort-on-first-failure
