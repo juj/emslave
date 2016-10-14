@@ -38,8 +38,19 @@ echo "ENVIRONMENT VARIABLES: "
 echo "- EMSCRIPTEN_BROWSER: "
 echo $EMSCRIPTEN_BROWSER
 
+export TESTS_TO_SKIP=
+if [ "$(uname)" == "Darwin" ]; then # Mac OS X
+	export TESTS_TO_SKIP=skip:browser.test_html5_webgl_create_context
+	echo "Skipping browser.test_html5_webgl_create_context because of https://bugzilla.mozilla.org/show_bug.cgi?id=1285937"
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then # Linux
+	echo "."
+elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then # Windows Cygwin
+	echo "."
+fi
+
 echo "Running browser tests.."
-python -u tests/runner.py $TEST_RUNNER_PARAMS skip:browser.test_html_source_map
+echo "Skipping tests $TESTS_TO_SKIP"
+python -u tests/runner.py $TEST_RUNNER_PARAMS $TESTS_TO_SKIP
 rc=$?
 echo "Test run finished. Killing any running firefox processes:"
 pkill -9 -x firefox
