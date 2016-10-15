@@ -11,7 +11,7 @@ if [ -z "$SLAVE_ROOT" ]; then
 fi
 
 pushd $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk > /dev/null
-source ./emsdk_env.sh
+source ./emsdk_env.sh --embedded
 popd > /dev/null
 
 echo "System version information: (uname -a):"
