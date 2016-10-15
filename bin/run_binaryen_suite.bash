@@ -7,4 +7,7 @@ fi
 
 source build_env.bash
 
+echo "- CWD: "
+echo $CWD
+
 python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-test-waterfall --no-abort-on-first-failure
