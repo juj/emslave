@@ -40,7 +40,7 @@ echo $EMSCRIPTEN_BROWSER
 
 export TESTS_TO_SKIP=
 if [ "$(uname)" == "Darwin" ]; then # Mac OS X
-	export TESTS_TO_SKIP=skip:browser.test_html5_webgl_create_context skip:browser.test_glgears skip:browser.test_glgears_deriv skip:browser.test_subdata
+	export TESTS_TO_SKIP="skip:browser.test_html5_webgl_create_context skip:browser.test_glgears skip:browser.test_glgears_deriv skip:browser.test_subdata"
 	echo "Skipping browser.test_html5_webgl_create_context because of https://bugzilla.mozilla.org/show_bug.cgi?id=1285937"
     echo "Skipping browser.test_glgears, browser.test_glgears_deriv and browser.test_subdata because of intermittent requestAnimationFrame-related failures (TODO)"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then # Linux
