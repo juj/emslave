@@ -236,6 +236,11 @@ def deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url):
   print str(cmd)
   subprocess.check_call(cmd)
 
+def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
+  build_bitness = '32' if build_x86 else '64'
+  cmd = ['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit']
+  print str(cmd)
+  subprocess.check_call(cmd)
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
@@ -292,6 +297,7 @@ def main():
   parser = optparse.OptionParser(usage=usage_str)
 
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
+  parser.add_option('--build_tag_or_branch', dest='build_tag_or_branch', default='', help='If specified, checks out the given tag or branch in all repos and builds that instead of the current repository. Otherwise builds and uploads to Nightly bucket.')
   parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
   parser.add_option('--git_clean', dest='git_clean', action='store_true', default=False, help='If true, performs a "git clean -xdf" operation on the directory before zipping it up.')
   parser.add_option('--deploy_llvm', dest='deploy_llvm', action='store_true', default=False, help='If true, deploys Emscripten fastcomp LLVM+Clang to S3')
@@ -301,6 +307,9 @@ def main():
   parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
 
   (options, args) = parser.parse_args(sys.argv)
+
+  # Are we targeting a Nightly build? (automatically dated zip of current contents)
+  nightly = (options.build_tag_or_branch is '')
 
   if not options.emsdk_dir:
     print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
@@ -312,7 +321,7 @@ def main():
     sys.exit(1)
 
   if not options.cmake_config:
-    print >> sys.stderr, 'Please specfiy --cmake_config Debug|Release|RelWithDebInfo|MinSizeRel'
+    print >> sys.stderr, 'Please specify --cmake_config Debug|Release|RelWithDebInfo|MinSizeRel'
     sys.exit(1)
 
   llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
@@ -346,27 +355,29 @@ def main():
 
   # Compute the time of the most recent git changes to timestamp the generated build
   git = which('git')
-  emscripten_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
-  llvm_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
-  clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
-  newest_time = max(emscripten_git_time, llvm_git_time, clang_git_time)
 
-  output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
-  if os.path.isdir(output_dir):
-    shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
+  if nightly:
+    emscripten_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
+    llvm_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
+    clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
+    newest_time = max(emscripten_git_time, llvm_git_time, clang_git_time)
 
-  s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
-
-  s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
-
-  s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
+    output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
+    if os.path.isdir(output_dir):
+      print 'Deleting old output directory ' + output_dir
+      shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
+  else:
+    build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag_or_branch, options.cmake_config, options.deploy_32bit)
 
   if options.deploy_llvm:
+    s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
     deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
 
   if options.deploy_emscripten:
     emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
 
+    s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
+    s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
     deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
 
   return 0
