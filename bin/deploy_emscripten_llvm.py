@@ -314,6 +314,8 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   opt_binary_dir = opt_binary_dir[0]
   print 'Optimizer binary directory: ' + opt_binary_dir
 
+  binaryen_src_dir = os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version)
+
   # Find where Binaryen was built to.
   binaryen_binary_dirs = [
     os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version + cmake_generator_identifier + '_' + build_bitness + 'bit_binaryen', 'bin') # CMake single&multigenerator builds
@@ -334,11 +336,18 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   shutil.copytree(clang_binary_dir, output_dir)
   print opt_binary_dir + ' -> ' + output_dir
   shutil.copy(os.path.join(opt_binary_dir, exe_suffix('optimizer')), os.path.join(output_dir, exe_suffix('optimizer')))
+
   print binaryen_binary_dir + ' -> ' + output_dir
-  copy_all_files_in_dir(binaryen_binary_dir, output_dir)
+  binaryen_output_dir = os.path.join(output_dir, 'binaryen')
+  shutil.copytree(binaryen_binary_dir, binaryen_output_dir)
+  mkdir_p(os.path.join(binaryen_output_dir, 'scripts'))
+  copy_all_files_in_dir(os.path.join(binaryen_src_dir, 'scripts'), os.path.join(binaryen_output_dir, 'scripts'))
+  mkdir_p(os.path.join(binaryen_output_dir, 'src', 'js'))
+  copy_all_files_in_dir(os.path.join(binaryen_src_dir, 'src', 'js'), os.path.join(binaryen_output_dir, 'src', 'js'))
+
   print os.path.join(llvm_source_dir, 'emscripten-version.txt') + ' -> ' + os.path.join(output_dir, 'emscripten-version.txt')
   shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
-  open(os.path.join(output_dir, 'binaryen-version.txt'), 'w').write(binaryen_version)
+  open(os.path.join(binaryen_output_dir, 'binaryen-version.txt'), 'w').write(binaryen_version)
 
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
