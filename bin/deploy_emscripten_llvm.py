@@ -286,10 +286,14 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'src')
 
+  cmake_generator_identifier = ''
+  if WINDOWS:
+    cmake_generator_identifier = '_vs2015'
+
   # Find where LLVM/Clang was built to.
   clang_binary_dirs = [
-    os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
-    os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + '_' + build_bitness, 'bin') # CMake singlegenerator build (Makefiles)
+    os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + cmake_generator_identifier + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
+    os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + cmake_generator_identifier + '_' + build_bitness, 'bin') # CMake singlegenerator build (Makefiles)
   ]
   clang_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('clang'))), clang_binary_dirs)
   if len(clang_binary_dir) == 0:
@@ -300,8 +304,8 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   # Find where Emscripten optimizer was built to.
   opt_binary_dirs = [
-    os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
-    os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + '_' + build_bitness + 'bit_optimizer') # CMake singlegenerator build (Makefiles)
+    os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + cmake_generator_identifier + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
+    os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + cmake_generator_identifier + '_' + build_bitness + 'bit_optimizer') # CMake singlegenerator build (Makefiles)
   ]
   opt_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('optimizer'))), opt_binary_dirs)
   if len(opt_binary_dir) == 0:
@@ -312,7 +316,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   # Find where Binaryen was built to.
   binaryen_binary_dirs = [
-    os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version + '_' + build_bitness + 'bit_binaryen', 'bin') # CMake single&multigenerator builds
+    os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version + cmake_generator_identifier + '_' + build_bitness + 'bit_binaryen', 'bin') # CMake single&multigenerator builds
   ]
   binaryen_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('asm2wasm'))), binaryen_binary_dirs)
   if len(binaryen_binary_dir) == 0:
