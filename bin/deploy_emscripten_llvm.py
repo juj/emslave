@@ -482,7 +482,7 @@ def main():
   else:
     build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag_or_branch, options.cmake_config, options.deploy_32bit)
 
-    output_dir = os.path.join(options.emsdk_dir, 'clang', 'emscripten-clang_e' + llvm_version)
+    output_dir = os.path.join(options.emsdk_dir, 'clang', 'emscripten-llvm-e' + llvm_version)
     if os.path.isdir(output_dir):
       print 'Deleting old output directory ' + output_dir
       shutil.rmtree(output_dir)
