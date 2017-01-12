@@ -280,6 +280,75 @@ def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_
   run(['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
   run(['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
 
+def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_type, build_x86, output_dir, options, s3_llvm_deployment_url):
+  build_bitness = '32' if build_x86 else '64'
+  binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, load_binaryen_tags(emsdk_dir))
+
+  llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'src')
+
+  # Find where LLVM/Clang was built to.
+  clang_binary_dirs = [
+    os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
+    os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + '_' + build_bitness, 'bin') # CMake singlegenerator build (Makefiles)
+  ]
+  clang_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('clang'))), clang_binary_dirs)
+  if len(clang_binary_dir) == 0:
+    print 'Could not find compiled clang(.exe)!'
+    sys.exit(1)
+  clang_binary_dir = clang_binary_dir[0]
+  print 'LLVM/Clang binary directory: ' + clang_binary_dir
+
+  # Find where Emscripten optimizer was built to.
+  opt_binary_dirs = [
+    os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
+    os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + '_' + build_bitness + 'bit_optimizer') # CMake singlegenerator build (Makefiles)
+  ]
+  opt_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('optimizer'))), opt_binary_dirs)
+  if len(opt_binary_dir) == 0:
+    print 'Could not find compiled optimizer(.exe)!'
+    sys.exit(1)
+  opt_binary_dir = opt_binary_dir[0]
+  print 'Optimizer binary directory: ' + opt_binary_dir
+
+  # Find where Binaryen was built to.
+  binaryen_binary_dirs = [
+    os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version + '_' + build_bitness + 'bit_binaryen', 'bin') # CMake single&multigenerator builds
+  ]
+  binaryen_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('asm2wasm'))), binaryen_binary_dirs)
+  if len(binaryen_binary_dir) == 0:
+    print 'Could not find compiled Binaryen asm2wasm(.exe)!'
+    sys.exit(1)
+  binaryen_binary_dir = binaryen_binary_dir[0]
+  print 'Binaryen binary directory: ' + binaryen_binary_dir
+
+  # Deploy all tools
+  if os.path.isdir(output_dir):
+    print 'Old output directory ' + output_dir + ' exists, cleaning.'
+    shutil.rmtree(output_dir)
+  print 'Generating ' + output_dir
+  print clang_binary_dir + ' -> ' + output_dir
+  shutil.copytree(clang_binary_dir, output_dir)
+  print opt_binary_dir + ' -> ' + output_dir
+  shutil.copy(os.path.join(opt_binary_dir, exe_suffix('optimizer')), os.path.join(output_dir, exe_suffix('optimizer')))
+  print binaryen_binary_dir + ' -> ' + output_dir
+  copy_all_files_in_dir(binaryen_binary_dir, output_dir)
+  print os.path.join(llvm_source_dir, 'emscripten-version.txt') + ' -> ' + os.path.join(output_dir, 'emscripten-version.txt')
+  shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
+  open(os.path.join(output_dir, 'binaryen-version.txt'), 'w').write(binaryen_version)
+
+  zip_filename = output_dir
+  if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
+  zip_filename = add_zip_suffix(zip_filename)
+  print 'Zipping up "' + zip_filename + '"'
+  if os.path.isfile(zip_filename): os.remove(zip_filename)
+  zip_up_directory(output_dir, zip_filename)
+
+  print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
+
+  if options.deploy_llvm:
+    zip_url = url_join(s3_llvm_deployment_url, os.path.basename(zip_filename))
+    upload_to_s3(zip_filename, zip_url)
+
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
     print 'Git cleaning Emscripten directory for zipping it up..'
@@ -373,14 +442,12 @@ def main():
   if WINDOWS:
     llvm_build_dirname += '_vs2015'
     optimizer_build_dirname += '_vs2015'
-  if options.deploy_32bit:
-    llvm_build_dirname += '_32'
-    optimizer_build_dirname += '_32bit'
-    s3_subdirectory += '_32bit'
-  else:
-    llvm_build_dirname += '_64'
-    optimizer_build_dirname += '_64bit'
-    s3_subdirectory += '_64bit'
+
+  build_bitness = '32' if options.deploy_32bit else '64'
+  llvm_build_dirname += '_' + build_bitness
+  optimizer_build_dirname += '_' + build_bitness +'bit'
+  s3_subdirectory += '_' + build_bitness + 'bit'
+
   optimizer_build_dirname += '_optimizer'
 
   llvm_build_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
@@ -404,12 +471,20 @@ def main():
     if os.path.isdir(output_dir):
       print 'Deleting old output directory ' + output_dir
       shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
+
+    if options.deploy_llvm:
+      s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
+      deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
   else:
     build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag_or_branch, options.cmake_config, options.deploy_32bit)
 
-  if options.deploy_llvm:
-    s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
-    deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
+    output_dir = os.path.join(options.emsdk_dir, 'clang', 'emscripten-clang_e' + llvm_version)
+    if os.path.isdir(output_dir):
+      print 'Deleting old output directory ' + output_dir
+      shutil.rmtree(output_dir)
+
+    s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/tag/' + s3_subdirectory
+    deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag_or_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
 
   if options.deploy_emscripten:
     emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
