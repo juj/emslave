@@ -246,23 +246,26 @@ def ver_is_equal_or_newer_than(a, b):
     if a_ver < b_ver: return False
   return True
 
-def binaryen_version_needed_by_emscripten(emscripten_ver):
-  vers = [('1.37.0', 21),
-    ('1.36.14', 18),
-    ('1.36.13', 17),
-    ('1.36.12', 16),
-    ('1.36.10', 13),
-    ('1.36.6', 11),
-    ('1.36.4', 9),
-    ('1.36.2', 7),
-    ('1.36.1', None)]
-  for v in vers:
-    if ver_is_equal_or_newer_than(emscripten_ver, v[0]): return v[1]
-  return None
+def binaryen_version_needed_by_emscripten(emscripten_ver, binaryen_tags):
+  if not '.' in emscripten_ver:
+    return 'master'
+
+  newest_binaryen_tag = None
+  for t in binaryen_tags:
+    if ver_is_equal_or_newer_than(emscripten_ver, t):
+      if not newest_binaryen_tag or ver_is_equal_or_newer_than(t, newest_binaryen_tag):
+        newest_binaryen_tag = t
+  return newest_binaryen_tag
 
 def run(cmd):
   print str(cmd)
   return subprocess.check_call(cmd)
+
+def load_binaryen_tags(emsdk_dir):
+  try:
+    return open(os.path.join(emsdk_dir, 'binaryen-tags.txt'), 'r').read().split('\n')
+  except:
+    return []
 
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
   git = which('git')
@@ -270,7 +273,12 @@ def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_
   run(['python', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
 
   build_bitness = '32' if build_x86 else '64'
+
+  binaryen_tags = load_binaryen_tags(emsdk_dir)
+  binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, binaryen_tags)
+
   run(['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
+  run(['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
