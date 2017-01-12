@@ -236,6 +236,30 @@ def deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url):
   print str(cmd)
   subprocess.check_call(cmd)
 
+def ver_is_equal_or_newer_than(a, b):
+  a = a.split('.')
+  b = b.split('.')
+  for i in range(max(len(a), len(b))):
+    a_ver = int(a[i]) if i < len(a) else 0
+    b_ver = int(b[i]) if i < len(b) else 0
+    if a_ver > b_ver: return True
+    if a_ver < b_ver: return False
+  return True
+
+def binaryen_version_needed_by_emscripten(emscripten_ver):
+  vers = [('1.37.0', 21),
+    ('1.36.14', 18),
+    ('1.36.13', 17),
+    ('1.36.12', 16),
+    ('1.36.10', 13),
+    ('1.36.6', 11),
+    ('1.36.4', 9),
+    ('1.36.2', 7),
+    ('1.36.1', None)]
+  for v in vers:
+    if ver_is_equal_or_newer_than(emscripten_ver, v[0]): return v[1]
+  return None
+
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
   build_bitness = '32' if build_x86 else '64'
   cmd = ['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit']
