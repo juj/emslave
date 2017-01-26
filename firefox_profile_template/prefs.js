@@ -66,6 +66,8 @@ user_pref("media.gmp-gmpopenh264.lastUpdate", 4102437600);
 user_pref("datareporting.healthreport.nextDataSubmissionTime", 4102437600439);
 // Detect directly when executing if asm.js does not validate by throwing an error.
 user_pref("javascript.options.throw_on_asmjs_validation_failure", true);
+// Enable wasm
+user_pref("javascript.options.wasm", true);
 // Throw errors on all JS engine warnings for "strict" mode execution.
 // TODO: Can't enable this because asm.js parse error occurs before any of the page is run, and we can't report failure as a result!
 //user_pref("javascript.options.werror", true);
