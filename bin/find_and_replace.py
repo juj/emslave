@@ -11,11 +11,15 @@ print "Filename: '" + filename + "'"
 print "find: '" + find + "'"
 print "replace: '" + replace + "'"
 
-text = open(filename, 'r').read()
-print 'before:'
-print text
-text = re.sub(find, replace, text)
-print 'after:'
-print text
+try:
+	text = open(filename, 'r').read()
+	print 'before:'
+	print text
+	text = re.sub(find, replace, text)
+	print 'after:'
+	print text
 
-open(filename, 'w').write(text)
+	open(filename, 'w').write(text)
+except Exception, e:
+	print 'Failed to search-replace, error: ' + str(e)
+	print '(ignoring this error)'
