@@ -292,15 +292,15 @@ def latest_unbuilt_tag(emsdk_dir, build_x86):
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
   git = which('git')
   run([git, 'pull'])
-  run(['python', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
 
   build_bitness = '32' if build_x86 else '64'
 
   binaryen_tags = load_binaryen_tags(emsdk_dir)
   binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, binaryen_tags)
 
-  run(['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
-  run(['python', os.path.join(emsdk_dir, 'emsdk'), 'install', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'install', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
 
 def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_type, build_x86, output_dir, options, s3_llvm_deployment_url):
   build_bitness = '32' if build_x86 else '64'
@@ -467,7 +467,7 @@ def main():
   if options.build_tag == 'latest_tag':
     git = which('git')
     run([git, 'pull'])
-    run(['python', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
+    run(['python', '-u', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
     options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
     print 'Latest unbuilt tag: ' + options.build_tag
 
