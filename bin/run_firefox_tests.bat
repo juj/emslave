@@ -19,6 +19,18 @@ set EMSCRIPTEN_BROWSER=%FIREFOX_BROWSER% -profile %SLAVE_ROOT:\=/%/emscripten_fi
 echo ENVIRONMENT VARIABLES: 
 echo - EMSCRIPTEN_BROWSER: "%EMSCRIPTEN_BROWSER%"
 
+:: https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+set MOZ_DISABLE_AUTO_SAFE_MODE=1
+echo Set MOZ_DISABLE_AUTO_SAFE_MODE=1, see https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+
+:: https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
+set MOZ_DISABLE_SAFE_MODE_KEY=1
+echo Set MOZ_DISABLE_SAFE_MODE_KEY=1, see https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
+
+:: https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+set JIT_OPTION_asmJSAtomicsEnable=true
+echo Set JIT_OPTION_asmJSAtomicsEnable=true, see # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+
 echo Running browser tests..
 python -u tests/runner.py %TEST_RUNNER_PARAMS% skip:browser.test_html_source_map
 set RETURNCODE=%ERRORLEVEL%
