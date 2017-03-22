@@ -267,6 +267,28 @@ def load_binaryen_tags(emsdk_dir):
   except:
     return []
 
+def is_emscripten_tag_built(emsdk_dir, tag, build_x86):
+  try:
+    d = os.path.join(emsdk_dir, '.built_tags_ ' + ('32' if build_x86 else '64'))
+    f = os.path.join(d, tag + '.txt')
+    return os.path.exists(f)
+  except Exception, e:
+    print >> sys.stderr, str(e)
+    return False
+
+def mark_tag_built(emsdk_dir, tag, build_x86):
+  d = os.path.join(emsdk_dir, '.built_tags_ ' + ('32' if build_x86 else '64'))
+  mkdir_p(d)
+  f = os.path.join(d, tag + '.txt')
+  open(f, 'w').write('Success!')
+
+def latest_unbuilt_tag(emsdk_dir, build_x86):
+  binaryen_tags = load_binaryen_tags(emsdk_dir)
+  for tag in reversed(binaryen_tags):
+    if not is_emscripten_tag_built(emsdk_dir, tag, build_x86):
+      return tag
+  return None
+
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
   git = which('git')
   run([git, 'pull'])
@@ -361,6 +383,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   if options.deploy_llvm:
     zip_url = url_join(s3_llvm_deployment_url, os.path.basename(zip_filename))
     upload_to_s3(zip_filename, zip_url)
+    create_directory_index(s3_llvm_deployment_url) # Re-create directory index in the uploaded directory.
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
@@ -379,7 +402,16 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
 
-  zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'node_modules', 'third_party/lzma.js/', '*.pyc'])
+  # We want to ignore the root '/node_modules' directory from the zip, but there are other node_modules directories in the Emscripten tree
+  # which do need to get in to the generated zip. The simplest way seems to be to temporarily rename the root node_modules directory to
+  # a different name, which will be ignored during zipping.
+  if os.path.isdir(os.path.join(emscripten_output_dir, 'node_modules')):
+    os.rename(os.path.join(emscripten_output_dir, 'node_modules'), os.path.join(emscripten_output_dir, 'node_modules_ignore'))
+  try:
+    zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'node_modules_ignore', 'third_party/lzma.js/', '*.pyc'])
+  finally:
+    os.rename(os.path.join(emscripten_output_dir, 'node_modules_ignore'), os.path.join(emscripten_output_dir, 'node_modules'))
+
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
   # Print git commit versions from each repository
@@ -417,7 +449,8 @@ def main():
   parser = optparse.OptionParser(usage=usage_str)
 
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
-  parser.add_option('--build_tag_or_branch', dest='build_tag_or_branch', default='', help='If specified, checks out the given tag or branch in all repos and builds that instead of the current repository. Otherwise builds and uploads to Nightly bucket.')
+  parser.add_option('--build_tag', dest='build_tag', default='', help='If specified, checks out the given tag in all repos and builds that instead of the current repository. Otherwise builds and uploads to Nightly bucket.')
+  parser.add_option('--build_branch', dest='build_branch', default='', help='If specified, checks out the given branch in all repos and builds that instead of the current repository. Otherwise builds and uploads to Nightly bucket.')
   parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
   parser.add_option('--git_clean', dest='git_clean', action='store_true', default=False, help='If true, performs a "git clean -xdf" operation on the directory before zipping it up.')
   parser.add_option('--deploy_llvm', dest='deploy_llvm', action='store_true', default=False, help='If true, deploys Emscripten fastcomp LLVM+Clang to S3')
@@ -429,7 +462,14 @@ def main():
   (options, args) = parser.parse_args(sys.argv)
 
   # Are we targeting a Nightly build? (automatically dated zip of current contents)
-  nightly = (options.build_tag_or_branch is '')
+  nightly = (options.build_tag is '' and options.build_branch is '')
+
+  if options.build_tag == 'latest_tag':
+    git = which('git')
+    run([git, 'pull'])
+    run(['python', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
+    options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
+    print 'Latest unbuilt tag: ' + options.build_tag
 
   if not options.emsdk_dir:
     print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
@@ -444,37 +484,38 @@ def main():
     print >> sys.stderr, 'Please specify --cmake_config Debug|Release|RelWithDebInfo|MinSizeRel'
     sys.exit(1)
 
-  llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
-  llvm_build_dirname = 'build_incoming'
-  optimizer_build_dirname = 'incoming'
-
   if WINDOWS: s3_subdirectory = 'win'
   elif LINUX: s3_subdirectory = 'linux'
   elif OSX: s3_subdirectory = 'osx'
 
-  if WINDOWS:
-    llvm_build_dirname += '_vs2015'
-    optimizer_build_dirname += '_vs2015'
-
   build_bitness = '32' if options.deploy_32bit else '64'
-  llvm_build_dirname += '_' + build_bitness
-  optimizer_build_dirname += '_' + build_bitness +'bit'
   s3_subdirectory += '_' + build_bitness + 'bit'
-
-  optimizer_build_dirname += '_optimizer'
-
-  llvm_build_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
-  emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', 'incoming')
-  optimizer_build_dir = os.path.join(options.emsdk_dir, 'emscripten', optimizer_build_dirname)
-  binaryen_build_dir = ''
-  llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
-  if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
-  if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
 
   # Compute the time of the most recent git changes to timestamp the generated build
   git = which('git')
 
   if nightly:
+    llvm_build_dirname = 'build_incoming'
+    optimizer_build_dirname = 'incoming'
+    if WINDOWS:
+      llvm_build_dirname += '_vs2015'
+      optimizer_build_dirname += '_vs2015'
+
+    llvm_build_dirname += '_' + build_bitness
+    optimizer_build_dirname += '_' + build_bitness +'bit'
+    optimizer_build_dirname += '_optimizer'
+
+    llvm_build_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
+    emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', 'incoming')
+    optimizer_build_dir = os.path.join(options.emsdk_dir, 'emscripten', optimizer_build_dirname)
+    binaryen_build_dir = ''
+
+    llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
+
+    llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
+    if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
+    if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
+
     emscripten_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
     llvm_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
     clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
@@ -488,8 +529,22 @@ def main():
     if options.deploy_llvm:
       s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/nightly/' + s3_subdirectory
       deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, options.cmake_config, s3_llvm_deployment_url, not options.deploy_32bit, options)
-  else:
-    build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag_or_branch, options.cmake_config, options.deploy_32bit)
+
+    if options.deploy_emscripten:
+      emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
+
+      s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
+      s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
+      deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
+  else: # Building a tag or a branch
+    build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit)
+
+    if options.build_tag:
+      llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'tag-e' + options.build_tag, 'src')
+
+    llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
+    if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
+    if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
 
     output_dir = os.path.join(options.emsdk_dir, 'clang', 'emscripten-llvm-e' + llvm_version)
     if os.path.isdir(output_dir):
@@ -497,14 +552,9 @@ def main():
       shutil.rmtree(output_dir)
 
     s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/tag/' + s3_subdirectory
-    deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag_or_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
+    deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
 
-  if options.deploy_emscripten:
-    emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-nightly-" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
-
-    s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
-    s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
-    deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
+    mark_tag_built(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.deploy_32bit)
 
   return 0
 
