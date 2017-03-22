@@ -57,7 +57,7 @@ echo "Set MOZ_DISABLE_AUTO_SAFE_MODE=1, see https://bugzilla.mozilla.org/show_bu
 export MOZ_DISABLE_SAFE_MODE_KEY=1
 echo "Set MOZ_DISABLE_SAFE_MODE_KEY=1, see https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9"
 
-# # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+# https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
 export JIT_OPTION_asmJSAtomicsEnable=true
 echo "Set JIT_OPTION_asmJSAtomicsEnable=true, see # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0"
 
