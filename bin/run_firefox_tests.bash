@@ -49,6 +49,18 @@ elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then # Windows Cygwi
 	echo "."
 fi
 
+# https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+export MOZ_DISABLE_AUTO_SAFE_MODE=1
+echo "Set MOZ_DISABLE_AUTO_SAFE_MODE=1, see https://bugzilla.mozilla.org/show_bug.cgi?id=745154"
+
+# https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
+export MOZ_DISABLE_SAFE_MODE_KEY=1
+echo "Set MOZ_DISABLE_SAFE_MODE_KEY=1, see https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9"
+
+# # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+export JIT_OPTION_asmJSAtomicsEnable=true
+echo "Set JIT_OPTION_asmJSAtomicsEnable=true, see # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0"
+
 echo "Running browser tests.."
 echo "Skipping tests $TESTS_TO_SKIP"
 python -u tests/runner.py $TEST_RUNNER_PARAMS $TESTS_TO_SKIP
