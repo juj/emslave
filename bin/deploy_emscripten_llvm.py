@@ -471,7 +471,10 @@ def main():
     run([git, 'pull'])
     run(['python', '-u', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
     options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
-    print 'Latest unbuilt tag: ' + options.build_tag
+    print 'Latest unbuilt tag: ' + str(options.build_tag)
+    if not options.build_tag:
+      print 'No unbuilt tags left, quitting.'
+      sys.exit(0)
 
   if not options.emsdk_dir:
     print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
