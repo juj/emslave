@@ -361,7 +361,8 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   print binaryen_binary_dir + ' -> ' + output_dir
   binaryen_output_dir = os.path.join(output_dir, 'binaryen')
-  shutil.copytree(binaryen_binary_dir, binaryen_output_dir)
+  mkdir_p(os.path.join(binaryen_output_dir, 'bin'))
+  copy_all_files_in_dir(binaryen_binary_dir, os.path.join(binaryen_output_dir, 'bin'))
   mkdir_p(os.path.join(binaryen_output_dir, 'scripts'))
   copy_all_files_in_dir(os.path.join(binaryen_src_dir, 'scripts'), os.path.join(binaryen_output_dir, 'scripts'))
   mkdir_p(os.path.join(binaryen_output_dir, 'src', 'js'))
