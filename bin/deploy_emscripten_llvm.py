@@ -410,7 +410,8 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   try:
     zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'node_modules_ignore', 'third_party/lzma.js/', '*.pyc'])
   finally:
-    os.rename(os.path.join(emscripten_output_dir, 'node_modules_ignore'), os.path.join(emscripten_output_dir, 'node_modules'))
+    if os.path.isdir(os.path.join(emscripten_output_dir, 'node_modules_ignore')):
+      os.rename(os.path.join(emscripten_output_dir, 'node_modules_ignore'), os.path.join(emscripten_output_dir, 'node_modules'))
 
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
