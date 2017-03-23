@@ -269,7 +269,7 @@ def load_binaryen_tags(emsdk_dir):
 
 def is_emscripten_tag_built(emsdk_dir, tag, build_x86):
   try:
-    d = os.path.join(emsdk_dir, '.built_tags_ ' + ('32' if build_x86 else '64'))
+    d = os.path.join(emsdk_dir, '.built_tags_' + ('32' if build_x86 else '64'))
     f = os.path.join(d, tag + '.txt')
     return os.path.exists(f)
   except Exception, e:
@@ -277,7 +277,7 @@ def is_emscripten_tag_built(emsdk_dir, tag, build_x86):
     return False
 
 def mark_tag_built(emsdk_dir, tag, build_x86):
-  d = os.path.join(emsdk_dir, '.built_tags_ ' + ('32' if build_x86 else '64'))
+  d = os.path.join(emsdk_dir, '.built_tags_' + ('32' if build_x86 else '64'))
   mkdir_p(d)
   f = os.path.join(d, tag + '.txt')
   open(f, 'w').write('Success!')
