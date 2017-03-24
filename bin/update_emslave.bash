@@ -32,6 +32,7 @@ if [ ! -d "$SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk" ]; then
 fi
 
 cd $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk
+git checkout -- emscripten-tags.txt binaryen-tags.txt
 git pull
 
 #export CMAKE_CONFIG_TO_BUILD=""
