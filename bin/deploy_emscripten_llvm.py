@@ -257,9 +257,15 @@ def binaryen_version_needed_by_emscripten(emscripten_ver, binaryen_tags):
         newest_binaryen_tag = t
   return newest_binaryen_tag
 
-def run(cmd):
-  print str(cmd)
-  return subprocess.check_call(cmd)
+def run(cmd, cwd='.'):
+  cwd = os.path.abspath(cwd)
+  prev_cwd = os.getcwd()
+  print str(cmd) + ' in directory ' + cwd
+  try:
+    os.chdir(cwd)
+    return subprocess.check_call(cmd)
+  finally:
+    os.chdir(prev_cwd)
 
 def load_binaryen_tags(emsdk_dir):
   try:
@@ -289,9 +295,13 @@ def latest_unbuilt_tag(emsdk_dir, build_x86):
       return tag
   return None
 
-def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
+def git_pull_emsdk(emsdk_dir):
   git = which('git')
-  run([git, 'pull'])
+  run([git, 'checkout', '--', 'emscripten-tags.txt', 'binaryen-tags.txt'], cwd=emsdk_dir)
+  run([git, 'pull'], cwd=emsdk_dir)
+
+def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
+  git_pull_emsdk(emsdk_dir)
   run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
 
   build_bitness = '32' if build_x86 else '64'
@@ -467,8 +477,7 @@ def main():
   nightly = (options.build_tag is '' and options.build_branch is '')
 
   if options.build_tag == 'latest_tag':
-    git = which('git')
-    run([git, 'pull'])
+    git_pull_emsdk()
     run(['python', '-u', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
     options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
     print 'Latest unbuilt tag: ' + str(options.build_tag)
