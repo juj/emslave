@@ -123,7 +123,7 @@ def main():
     mkdir_p(stage_dir)
     print 'Staging to "' + stage_dir + '"'
 
-    dirs = ['bin']
+    dirs = []
     files = [
         'binaryen-tags.txt',
         'emcmdprompt.bat',
@@ -139,7 +139,7 @@ def main():
 
     if WINDOWS:
       emsdk_packages += ['python-2.7.5.3-64bit']
-      dirs += ['python']
+      dirs += ['bin', 'python']
 
     if len(emsdk_packages) > 0:
       print 'Installing ' + str(emsdk_packages)
