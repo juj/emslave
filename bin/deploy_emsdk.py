@@ -169,6 +169,14 @@ def main():
       s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/releases/' + zip_filename_without_directory
       upload_to_s3(zip_filename, s3_emscripten_deployment_url)
 
+      if WINDOWS: update_zip_name = 'emsdk_windows_update.zip'
+      elif OSX: update_zip_name = 'emsdk_osx_update.tar.gz'
+      elif LINUX: update_zip_name = 'emsdk_unix_update.tar.gz'
+      else: raise Exception('Unknown OS')
+
+      s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/' + update_zip_name
+      upload_to_s3(zip_filename, s3_emscripten_deployment_url)
+
   except Exception, e:
     print >> sys.stderr, str(e)
   finally:
