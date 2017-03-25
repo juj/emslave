@@ -476,8 +476,12 @@ def main():
   # Are we targeting a Nightly build? (automatically dated zip of current contents)
   nightly = (options.build_tag is '' and options.build_branch is '')
 
+  if not options.emsdk_dir:
+    print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
+    sys.exit(1)
+
   if options.build_tag == 'latest_tag':
-    git_pull_emsdk()
+    git_pull_emsdk(options.emsdk_dir)
     run(['python', '-u', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
     options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
     print 'Latest unbuilt tag: ' + str(options.build_tag)
@@ -485,9 +489,6 @@ def main():
       print 'No unbuilt tags left, quitting.'
       sys.exit(0)
 
-  if not options.emsdk_dir:
-    print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
-    sys.exit(1)
   options.emsdk_dir = os.path.abspath(options.emsdk_dir)
   print 'Path to emsdk: ' + options.emsdk_dir
   if not os.path.isfile(os.path.join(options.emsdk_dir, 'emsdk')):
