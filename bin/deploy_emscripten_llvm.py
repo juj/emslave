@@ -488,6 +488,9 @@ def main():
     if not options.build_tag:
       print 'No unbuilt tags left, quitting.'
       sys.exit(0)
+    if not ver_is_equal_or_newer_than(options.build_tag, '1.36.13'):
+      print 'Skipping building tags older than 1.36.13.'
+      sys.exit(0)
 
   options.emsdk_dir = os.path.abspath(options.emsdk_dir)
   print 'Path to emsdk: ' + options.emsdk_dir
