@@ -6,7 +6,7 @@ call build_env.bat
 
 call emcc --clear-cache
 
-call python -u tests/parallel_test_core.py
+call python -u tests/runner.py
 
 EXIT /B %ERRORLEVEL%
 
