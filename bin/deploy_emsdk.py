@@ -158,7 +158,10 @@ def main():
         shutil.copymode(src, dst)
 
     # Zip up
-    zip_filename_without_directory = add_zip_suffix('emsdk-portable')
+    zip_basename = 'emsdk-portable'
+    if WINDOWS:
+      zip_basename += '-64bit'
+    zip_filename_without_directory = add_zip_suffix(zip_basename)
     zip_filename = os.path.join(stage_root_dir, zip_filename_without_directory)
     print 'Zipping up "' + zip_filename + '"'
     zip_up_directory(stage_dir, zip_filename)
