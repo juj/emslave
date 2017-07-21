@@ -40,10 +40,11 @@ echo $EMSCRIPTEN_BROWSER
 
 export TESTS_TO_SKIP=
 if [ "$(uname)" == "Darwin" ]; then # Mac OS X
-	export TESTS_TO_SKIP="skip:browser.test_html5_webgl_create_context skip:browser.test_glgears skip:browser.test_glgears_deriv skip:browser.test_subdata skip:browser.test_float_tex"
+	export TESTS_TO_SKIP="skip:browser.test_cubegeom_pre_vao_es skip:browser.test_html5_webgl_create_context skip:browser.test_glgears skip:browser.test_glgears_deriv skip:browser.test_subdata skip:browser.test_float_tex"
 	echo "Skipping browser.test_html5_webgl_create_context because of https://bugzilla.mozilla.org/show_bug.cgi?id=1285937"
     echo "Skipping browser.test_float_tex because of https://bugzilla.mozilla.org/show_bug.cgi?id=1350675"
     echo "Skipping browser.test_glgears, browser.test_glgears_deriv and browser.test_subdata because of intermittent requestAnimationFrame-related failures (TODO)"
+    echo "Skipping browser.test_cubegeom_pre_vao_es due to https://github.com/kripken/emscripten/issues/5408"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then # Linux
 	echo "."
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then # Windows Cygwin
