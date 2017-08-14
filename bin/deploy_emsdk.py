@@ -106,6 +106,7 @@ def main():
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
   parser.add_option('--deploy_s3', dest='deploy_s3', action='store_true', default=False, help='If true, deploys Emsdk packages to S3. If false, only creates local zip/tar.gz files')
   parser.add_option('--delete_temp_files', dest='delete_temp_files', action='store_true', default=False, help='If true, all generated local files are deleted after done.')
+  parser.add_option('--deploy_update_package', dest='deploy_update_package', action='store_true', default=False, help='If true, deploys update zip. If false, deploys portable installer zip.')
 
   (options, args) = parser.parse_args(sys.argv)
 
@@ -138,8 +139,10 @@ def main():
     emsdk_packages = []
 
     if WINDOWS:
-      emsdk_packages += ['python-2.7.5.3-64bit']
-      dirs += ['bin', 'python']
+      dirs += ['bin']
+      if not options.deploy_update_package:
+        emsdk_packages += ['python-2.7.5.3-64bit']
+        dirs += ['python']
 
     if len(emsdk_packages) > 0:
       print 'Installing ' + str(emsdk_packages)
@@ -169,17 +172,19 @@ def main():
 
     # Upload to S3
     if options.deploy_s3:
-      s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/releases/' + zip_filename_without_directory
-      upload_to_s3(zip_filename, s3_emscripten_deployment_url)
+      if options.deploy_update_package:
+        # Deploy portable SDK updater package
+        if WINDOWS: update_zip_name = 'emsdk_windows_update.zip'
+        elif OSX: update_zip_name = 'emsdk_osx_update.tar.gz'
+        elif LINUX: update_zip_name = 'emsdk_unix_update.tar.gz'
+        else: raise Exception('Unknown OS')
 
-      if WINDOWS: update_zip_name = 'emsdk_windows_update.zip'
-      elif OSX: update_zip_name = 'emsdk_osx_update.tar.gz'
-      elif LINUX: update_zip_name = 'emsdk_unix_update.tar.gz'
-      else: raise Exception('Unknown OS')
-
-      s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/' + update_zip_name
-      upload_to_s3(zip_filename, s3_emscripten_deployment_url)
-
+        s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/' + update_zip_name
+        upload_to_s3(zip_filename, s3_emscripten_deployment_url)
+      else:
+        # Deploy portable SDK release package
+        s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/releases/' + zip_filename_without_directory
+        upload_to_s3(zip_filename, s3_emscripten_deployment_url)
   except Exception, e:
     print >> sys.stderr, str(e)
   finally:
