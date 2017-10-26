@@ -320,7 +320,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   cmake_generator_identifier = ''
   if WINDOWS:
-    cmake_generator_identifier = '_vs2015'
+    cmake_generator_identifier = '_vs2017'
 
   # Find where LLVM/Clang was built to.
   clang_binary_dirs = [
@@ -516,8 +516,8 @@ def main():
     llvm_build_dirname = 'build_incoming'
     optimizer_build_dirname = 'incoming'
     if WINDOWS:
-      llvm_build_dirname += '_vs2015'
-      optimizer_build_dirname += '_vs2015'
+      llvm_build_dirname += '_vs2017'
+      optimizer_build_dirname += '_vs2017'
 
     llvm_build_dirname += '_' + build_bitness
     optimizer_build_dirname += '_' + build_bitness +'bit'
