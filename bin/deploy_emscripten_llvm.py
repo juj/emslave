@@ -115,6 +115,13 @@ def url_join(u, f):
   if u.endswith('/'): return u + f
   else: return u + '/' + f
 
+tags_updated = False
+def update_emsdk_tags(emsdk_dir):
+  global tags_updated
+  if tags_updated: return
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
+  tags_updated = True
+
 def list_files_in_s3_directory(directory):
   if not directory.endswith('/'): directory += '/'
   cmd = ['aws', 's3', 'ls', directory]
@@ -275,9 +282,17 @@ def load_binaryen_tags(emsdk_dir):
 
 def is_emscripten_tag_built(emsdk_dir, tag, build_x86):
   try:
+    # Check if we have built this tag locally
     d = os.path.join(emsdk_dir, '.built_tags_' + ('32' if build_x86 else '64'))
     f = os.path.join(d, tag + '.txt')
-    return os.path.exists(f)
+    if os.path.exists(f): return True
+
+    # Check if the tag is known to exist on Amazon S3
+    update_emsdk_tags(emsdk_dir)
+    existing_tags_on_s3 = open(os.path.join(emsdk_dir, 'llvm-tags-' + ('32' if build_x86 else '64') + 'bit.txt'), 'r').read()
+    if 'emscripten-llvm-e' + tag in existing_tags_on_s3: return True
+
+    return False
   except Exception, e:
     print >> sys.stderr, str(e)
     return False
@@ -302,7 +317,7 @@ def git_pull_emsdk(emsdk_dir):
 
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
   git_pull_emsdk(emsdk_dir)
-  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
+  update_emsdk_tags(emsdk_dir)
 
   build_bitness = '32' if build_x86 else '64'
 
@@ -486,9 +501,10 @@ def main():
     print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
     sys.exit(1)
 
+  print('Latest unbuilt tag is ' + latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit))
   if options.build_tag == 'latest_tag':
     git_pull_emsdk(options.emsdk_dir)
-    run(['python', '-u', os.path.join(options.emsdk_dir, 'emsdk'), 'update-tags'])
+    update_emsdk_tags(options.emsdk_dir)
     options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
     print 'Latest unbuilt tag: ' + str(options.build_tag)
     if not options.build_tag:
