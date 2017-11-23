@@ -315,6 +315,17 @@ def git_pull_emsdk(emsdk_dir):
   run([git, 'checkout', '--', 'emscripten-tags.txt', 'binaryen-tags.txt'], cwd=emsdk_dir)
   run([git, 'pull'], cwd=emsdk_dir)
 
+def uninstall_built_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, build_x86):
+  print 'Uninstalling in emsdk_dir=' + emsdk_dir + ' tag_or_branch=' + tag_or_branch + ' x86=' + str(build_x86)
+  build_bitness = '32' if build_x86 else '64'
+
+  binaryen_tags = load_binaryen_tags(emsdk_dir)
+  binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, binaryen_tags)
+
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'clang-e-' + tag_or_branch + '-' + build_bitness + 'bit'])
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'emscripten-' + tag_or_branch + '-' + build_bitness + 'bit'])
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit'])
+
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
   git_pull_emsdk(emsdk_dir)
   update_emsdk_tags(emsdk_dir)
@@ -491,6 +502,7 @@ def main():
   parser.add_option('--make_and_deploy_docs', dest='make_and_deploy_docs', action='store_true', default=False, help='If true, Emscripten documentation is built and uploaded to S3 Nightly documentation site as well.')
   parser.add_option('--cmake_config', dest='cmake_config', default='', help='Specifies the CMake build configuration type to deploy (Debug, Release, RelWithDebInfo or MinSizeRel)')
   parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
+  parser.add_option('--delete_uploaded_build_dirs', dest='delete_uploaded_build_dirs', action='store_true', default=False, help='If true, the build directories are removed after a successful upload.')
 
   (options, args) = parser.parse_args(sys.argv)
 
@@ -595,6 +607,9 @@ def main():
     deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
 
     mark_tag_built(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.deploy_32bit)
+
+    if options.delete_uploaded_build_dirs:
+      uninstall_built_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.deploy_32bit)
 
   return 0
 
