@@ -26,8 +26,10 @@ Unit test slave configuration for Emscripten compiler buildbot slaves.
  - Enable "Add python.exe to Path", make sure "pip" is checked
 6. Install Python for Windows Extensions from https://sourceforge.net/projects/pywin32/files/pywin32/Build%20221/
  - Make sure to pick the 64-bit installer for Python 2.7, e.g. pywin32-221.win-amd64-py2.7.exe
-7. Install AWS Command Line Interface tools from https://aws.amazon.com/cli/ (64-bit Windows installer)
-8. Set up $HOME/.aws with "config" and "credentials" files for pushing tagged builds to AWS
+7. Install 7-zip from http://www.7-zip.org/download.html
+ - Add install directory (e.g. "C:\Program Files\7-Zip") to PATH for All Users
+8. Install AWS Command Line Interface tools from https://aws.amazon.com/cli/ (64-bit Windows installer)
+9. Set up $HOME/.aws with "config" and "credentials" files for pushing tagged builds to AWS
 
 ## Ubuntu Linux
 
