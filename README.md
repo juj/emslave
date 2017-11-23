@@ -82,3 +82,5 @@ In above, replace **slavename** and **slavepassword** with the identifiers for t
 
     cd ~/emslave/buildslave
     buildslave start
+
+Note: on Windows, `buildslave start` must be run inside **Developer Command Prompt for VS2017**.
