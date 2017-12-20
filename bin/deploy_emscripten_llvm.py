@@ -116,9 +116,9 @@ def url_join(u, f):
   else: return u + '/' + f
 
 tags_updated = False
-def update_emsdk_tags(emsdk_dir):
+def update_emsdk_tags(emsdk_dir, force=False):
   global tags_updated
-  if tags_updated: return
+  if tags_updated and not force: return
   run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'update-tags'])
   tags_updated = True
 
@@ -312,8 +312,14 @@ def latest_unbuilt_tag(emsdk_dir, build_x86):
 
 def git_pull_emsdk(emsdk_dir):
   git = which('git')
+
+  # To be able to do a 'git pull', make sure we have no changes to local tree.
   run([git, 'checkout', '--', 'emscripten-tags.txt', 'binaryen-tags.txt'], cwd=emsdk_dir)
   run([git, 'pull'], cwd=emsdk_dir)
+
+  # Need to re-download tags after the git pull is done, since we cleared the list of downloaded tags above.
+  update_emsdk_tags(emsdk_dir, force=True)
+
 
 def uninstall_built_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, build_x86):
   print 'Uninstalling in emsdk_dir=' + emsdk_dir + ' tag_or_branch=' + tag_or_branch + ' x86=' + str(build_x86)
