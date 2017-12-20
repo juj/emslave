@@ -341,8 +341,12 @@ def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_
   binaryen_tags = load_binaryen_tags(emsdk_dir)
   binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, binaryen_tags)
 
-  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
-  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'install', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit', '--build=' + cmake_build_type])
+  args = []
+  if WINDOWS:
+    args = ['--vs2017']
+
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'install', 'sdk-tag-' + tag_or_branch + '-' + build_bitness + 'bit', '--build=' + cmake_build_type] + args)
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'install', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit', '--build=' + cmake_build_type] + args)
 
 def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_type, build_x86, output_dir, options, s3_llvm_deployment_url):
   build_bitness = '32' if build_x86 else '64'
