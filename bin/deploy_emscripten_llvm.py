@@ -329,7 +329,7 @@ def uninstall_built_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, build_x86):
   binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, binaryen_tags)
 
   run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'clang-tag-e' + tag_or_branch + '-' + build_bitness + 'bit'])
-  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'emscripten-' + tag_or_branch + '-' + build_bitness + 'bit'])
+  run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'emscripten-tag-' + tag_or_branch + '-' + build_bitness + 'bit'])
   run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit'])
 
 def build_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, cmake_build_type, build_x86):
