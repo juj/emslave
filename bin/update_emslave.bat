@@ -19,11 +19,6 @@ cd %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk
 call git checkout -- emscripten-tags.txt binaryen-tags.txt
 call git pull
 
-:: set EMSDK_TARGETS=sdk-%TARGET_EMSCRIPTEN_BRANCH%-64bit crunch-1.03 java-8.152-64bit spidermonkey-nightly-2015-04-12-64bit gnu-2.5.4 binaryen-master-64bit
-:: call emsdk install --vs2015 --build-tests %EMSDK_TARGETS%
-:: del %userprofile%\.emscripten
-:: call emsdk activate --vs2015 --embedded %EMSDK_TARGETS%
-
 echo "This file should not be read, nothing but errors here!" > %userprofile%\.emscripten
 
 IF "%EMSCRIPTEN_TEMP%"=="" (GOTO no_emscripten_temp_override)
