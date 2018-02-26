@@ -141,7 +141,7 @@ def main():
     if WINDOWS:
       dirs += ['bin']
       if not options.deploy_update_package:
-        emsdk_packages += ['python-2.7.5.3-64bit']
+        emsdk_packages += ['python-2.7.13.1-64bit']
         dirs += ['python']
 
     if len(emsdk_packages) > 0:
