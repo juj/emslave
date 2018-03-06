@@ -19,7 +19,7 @@ cd %SLAVE_ROOT%\buildslave\%SLAVE_NAME%\emsdk
 call git checkout -- emscripten-tags.txt binaryen-tags.txt
 call git pull
 
-set EMSDK_TARGETS=sdk-%TARGET_EMSCRIPTEN_BRANCH%-64bit crunch-1.03 java-8.152-64bit spidermonkey-nightly-2015-04-12-64bit gnu-2.5.4 binaryen-master-64bit
+set EMSDK_TARGETS=sdk-%TARGET_EMSCRIPTEN_BRANCH%-64bit crunch-1.03 java-8.152-64bit spidermonkey-nightly-2015-04-12-64bit gnu-2.5.4 binaryen-master-64bit mingw-7.1.0-64bit
 call emsdk install --vs2017 --build-tests %EMSDK_TARGETS%
 del %userprofile%\.emscripten
 call emsdk activate --vs2017 --embedded %EMSDK_TARGETS%
