@@ -12,9 +12,9 @@ echo $CWD
 
 if [ "$(uname)" == "Darwin" ]; then # Mac OS X
 	echo "Skipping GCC tests, they don't quite work on OS X at the moment."
-	python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-test-waterfall --no-abort-on-first-failure --no-run-gcc-tests
+	python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-abort-on-first-failure --no-run-gcc-tests
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then # Linux
-	python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-test-waterfall --no-abort-on-first-failure --valgrind=valgrind
+	python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-abort-on-first-failure --valgrind=valgrind
 elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]; then # Windows Cygwin
-	python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-test-waterfall --no-abort-on-first-failure --no-run-gcc-tests
+	python -u $SLAVE_ROOT/buildslave/$SLAVE_NAME/emsdk/binaryen/master/check.py --no-abort-on-first-failure --no-run-gcc-tests
 fi
