@@ -459,16 +459,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
 
-  # We want to ignore the root '/node_modules' directory from the zip, but there are other node_modules directories in the Emscripten tree
-  # which do need to get in to the generated zip. The simplest way seems to be to temporarily rename the root node_modules directory to
-  # a different name, which will be ignored during zipping.
-  if os.path.isdir(os.path.join(emscripten_output_dir, 'node_modules')):
-    os.rename(os.path.join(emscripten_output_dir, 'node_modules'), os.path.join(emscripten_output_dir, 'node_modules_ignore'))
-  try:
-    zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'node_modules_ignore', 'third_party/lzma.js/', '*.pyc'])
-  finally:
-    if os.path.isdir(os.path.join(emscripten_output_dir, 'node_modules_ignore')):
-      os.rename(os.path.join(emscripten_output_dir, 'node_modules_ignore'), os.path.join(emscripten_output_dir, 'node_modules'))
+  zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'third_party/lzma.js/', '*.pyc'])
 
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
