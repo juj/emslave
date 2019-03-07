@@ -82,12 +82,13 @@ def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames,
 def copy_all_files_in_dir(srcdir, dstdir):
   blacklisted_copy_all_files_in_dir(srcdir, [], [], dstdir)
 
-def upload_to_s3(filename, out_s3_addr):
-  cmd = ['aws', 's3', 'cp', filename, out_s3_addr]
-  print 'Uploading ' + filename + ' to ' + out_s3_addr + '...'
-  print str(cmd)
-  subprocess.check_call(cmd)
-  print 'Done.'
+def upload_to_s3(filename, out_s3_addr, options):
+  if options.upload_s3:
+    cmd = ['aws', 's3', 'cp', filename, out_s3_addr]
+    print 'Uploading ' + filename + ' to ' + out_s3_addr + '...'
+    print str(cmd)
+    subprocess.check_call(cmd)
+    print 'Done.'
 
 def add_zip_suffix(path):
   if WINDOWS: return path + '.zip'
@@ -136,15 +137,16 @@ def list_files_in_s3_directory(directory):
       file_list += [m.group(1).strip()]
   return file_list
 
-def create_directory_index(url):
-  files = list_files_in_s3_directory(url)
-  files = filter(lambda x: x.endswith('.tar.gz') or x.endswith('.zip'), files)
+def create_directory_index(url, options):
+  if options.upload_s3:
+    files = list_files_in_s3_directory(url)
+    files = filter(lambda x: x.endswith('.tar.gz') or x.endswith('.zip'), files)
 
-  # Sort the files on descending timestamps. This is possible without a specical predicate, because the files in the directory have exactly same format with descending fixed space fields Y -> M -> D -> H -> Min.
-  files.sort(reverse=True)
+    # Sort the files on descending timestamps. This is possible without a specical predicate, because the files in the directory have exactly same format with descending fixed space fields Y -> M -> D -> H -> Min.
+    files.sort(reverse=True)
 
-  open('index.txt', 'w').write('\n'.join(files))
-  upload_to_s3('index.txt', url_join(url, 'index.txt'))
+    open('index.txt', 'w').write('\n'.join(files))
+    upload_to_s3('index.txt', url_join(url, 'index.txt'), options)
 
 def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_source_dir, optimizer_build_dir, binaryen_build_dir, output_dir, cmake_config_to_deploy, s3_llvm_deployment_url, deploy_x64, options):
   # Verify that versions match.
@@ -212,12 +214,12 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   # Upload LLVM
   if s3_llvm_deployment_url:
     zip_url = url_join(s3_llvm_deployment_url, os.path.basename(zip_filename))
-    upload_to_s3(zip_filename, zip_url)
+    upload_to_s3(zip_filename, zip_url, options)
 
     # Link the latest uploaded file under the canonical name as well:
     canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-llvm-latest')
     canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
-    upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)))
+    upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)), options)
 
     if options.delete_uploaded_files:
       print 'Deleting temporary directory "' + output_dir + '"'
@@ -226,7 +228,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
       os.remove(zip_filename)
 
   # Re-create directory index in the uploaded directory.
-  create_directory_index(s3_llvm_deployment_url)
+  create_directory_index(s3_llvm_deployment_url, options)
 
   print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
 
@@ -439,8 +441,8 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   if options.deploy_llvm:
     zip_url = url_join(s3_llvm_deployment_url, os.path.basename(zip_filename))
-    upload_to_s3(zip_filename, zip_url)
-    create_directory_index(s3_llvm_deployment_url) # Re-create directory index in the uploaded directory.
+    upload_to_s3(zip_filename, zip_url, options)
+    create_directory_index(s3_llvm_deployment_url, options) # Re-create directory index in the uploaded directory.
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
@@ -475,12 +477,12 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   # Upload Emscripten
   if s3_emscripten_deployment_url:
     zip_url = url_join(s3_emscripten_deployment_url, os.path.basename(zip_filename))
-    upload_to_s3(zip_filename, zip_url)
+    upload_to_s3(zip_filename, zip_url, options)
 
     # Link the latest uploaded file under the canonical name as well:
     canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-latest')
     canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
-    upload_to_s3(zip_url, url_join(s3_emscripten_deployment_url, os.path.basename(canonical_zip_filename)))
+    upload_to_s3(zip_url, url_join(s3_emscripten_deployment_url, os.path.basename(canonical_zip_filename)), options)
 
     if options.delete_uploaded_files:
       print 'Deleting temporary directory "' + emscripten_output_dir + '"'
@@ -489,7 +491,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
       os.remove(zip_filename)
 
   # Re-create directory index in the uploaded directory.
-  create_directory_index(s3_emscripten_deployment_url)
+  create_directory_index(s3_emscripten_deployment_url, options)
 
   print 'Done. Emscripten deployed to "' + emscripten_output_dir + '".'
 
@@ -498,9 +500,11 @@ def main():
   parser = optparse.OptionParser(usage=usage_str)
 
   parser.add_option('--emsdk_dir', dest='emsdk_dir', default='', help='Root path of Emscripten SDK.')
+  parser.add_option('--no_emsdk_install', dest='emsdk_install', action='store_false', default=True, help='If specified, skips running a "emsdk install" step. Use this if you have already manually built/installed the desired SDK configuration and do not need to re-do this step.')
   parser.add_option('--build_tag', dest='build_tag', default='', help='If specified, checks out the given tag in all repos and builds that instead of the current repository. Otherwise builds and uploads to Nightly bucket.')
   parser.add_option('--build_branch', dest='build_branch', default='', help='If specified, checks out the given branch in all repos and builds that instead of the current repository. Otherwise builds and uploads to Nightly bucket.')
   parser.add_option('--deploy_32bit', dest='deploy_32bit', action='store_true', default=False, help='If true, deploys a 32-bit build instead of the default 64-bit.')
+  parser.add_option('--no_upload_s3', dest='upload_s3', action='store_false', default=True, help='If specified, skips uploading built artifacts to Mozilla S3 bucket.')
   parser.add_option('--git_clean', dest='git_clean', action='store_true', default=False, help='If true, performs a "git clean -xdf" operation on the directory before zipping it up.')
   parser.add_option('--deploy_llvm', dest='deploy_llvm', action='store_true', default=False, help='If true, deploys Emscripten fastcomp LLVM+Clang to S3')
   parser.add_option('--deploy_emscripten', dest='deploy_emscripten', action='store_true', default=False, help='If true, deploys Emscripten to S3')
@@ -551,6 +555,8 @@ def main():
   # Compute the time of the most recent git changes to timestamp the generated build
   git = which('git')
 
+  llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
+
   if nightly:
     llvm_build_dirname = 'build_incoming'
     optimizer_build_dirname = 'incoming'
@@ -566,8 +572,6 @@ def main():
     emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', 'incoming')
     optimizer_build_dir = os.path.join(options.emsdk_dir, 'emscripten', optimizer_build_dirname)
     binaryen_build_dir = ''
-
-    llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
 
     llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
     if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
@@ -594,7 +598,8 @@ def main():
       s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
       deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
   else: # Building a tag or a branch
-    build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit)
+    if options.emsdk_install:
+      build_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit)
 
     if options.build_tag:
       llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'tag-e' + options.build_tag, 'src')
