@@ -90,15 +90,22 @@ def upload_to_s3(filename, out_s3_addr, options):
     subprocess.check_call(cmd)
     print 'Done.'
 
-def add_zip_suffix(path):
+def add_zip_suffix(path, options):
+  if options.compress_7zip:
+    return path + '.7z'
+  if options.compress_zip:
+    return path + '.zip'
+
   if WINDOWS: return path + '.zip'
   else: return path + '.tar.gz'
 
 def zip_up_directory(directory, output_file, exclude_patterns=[]):
-  if WINDOWS:
+  if WINDOWS or output_file.endswith('.zip') or output_file.endswith('.7z'):
     exclude_args = []
     for p in exclude_patterns: exclude_args += ['-x!' + p]
-    cmd = [which('7z', ['C:/Program Files/7-Zip']), 'a', output_file, os.path.join(directory, '*'), '-mx9'] + exclude_args # mx9=Ultra compression
+    zip_hint = ['C:/Program Files/7-Zip'] if WINDOWS else []
+    zip_exe = which('7z', zip_hint)
+    cmd = [zip_exe, 'a', output_file, os.path.join(directory, '*'), '-mx9'] + exclude_args # mx9=Ultra compression
   else:
     exclude_args = []
     for p in exclude_patterns: exclude_args += ["--exclude=" + p]
@@ -205,7 +212,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   # Zip up LLVM
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
-  zip_filename = add_zip_suffix(zip_filename)
+  zip_filename = add_zip_suffix(zip_filename, options)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
   zip_up_directory(output_dir, zip_filename)
@@ -218,7 +225,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
 
     # Link the latest uploaded file under the canonical name as well:
     canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-llvm-latest')
-    canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
+    canonical_zip_filename = add_zip_suffix(canonical_zip_filename, options)
     upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)), options)
 
     if options.delete_uploaded_files:
@@ -432,7 +439,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
-  zip_filename = add_zip_suffix(zip_filename)
+  zip_filename = add_zip_suffix(zip_filename, options)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
   zip_up_directory(output_dir, zip_filename)
@@ -457,7 +464,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
 
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
-  zip_filename = add_zip_suffix(zip_filename)
+  zip_filename = add_zip_suffix(zip_filename, options)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
 
@@ -481,7 +488,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
 
     # Link the latest uploaded file under the canonical name as well:
     canonical_zip_filename = os.path.join(os.path.dirname(zip_filename), 'emscripten-latest')
-    canonical_zip_filename = add_zip_suffix(canonical_zip_filename)
+    canonical_zip_filename = add_zip_suffix(canonical_zip_filename, options)
     upload_to_s3(zip_url, url_join(s3_emscripten_deployment_url, os.path.basename(canonical_zip_filename)), options)
 
     if options.delete_uploaded_files:
@@ -512,6 +519,8 @@ def main():
   parser.add_option('--cmake_config', dest='cmake_config', default='', help='Specifies the CMake build configuration type to deploy (Debug, Release, RelWithDebInfo or MinSizeRel)')
   parser.add_option('--delete_uploaded_files', dest='delete_uploaded_files', action='store_true', default=False, help='If true, all generated local files are deleted after successful upload.')
   parser.add_option('--delete_uploaded_build_dirs', dest='delete_uploaded_build_dirs', action='store_true', default=False, help='If true, the build directories are removed after a successful upload.')
+  parser.add_option('--7z', dest='compress_7zip', action='store_true', default=False, help='If true, compresses to .7z instead of .zip or .tar.gz.')
+  parser.add_option('--zip', dest='compress_zip', action='store_true', default=False, help='If true, compresses to .zip instead of .tar.gz.')
 
   (options, args) = parser.parse_args(sys.argv)
 
