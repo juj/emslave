@@ -99,13 +99,16 @@ def add_zip_suffix(path, options):
   if WINDOWS: return path + '.zip'
   else: return path + '.tar.gz'
 
-def zip_up_directory(directory, output_file, exclude_patterns=[]):
+# zip_root_directory: if True, then the generated zip file will have a root directory under which all the contents of the directory
+# will reside. If False, no zip root directory will be generated.
+def zip_up_directory(directory, output_file, zip_root_directory, exclude_patterns=[]):
   if WINDOWS or output_file.endswith('.zip') or output_file.endswith('.7z'):
     exclude_args = []
     for p in exclude_patterns: exclude_args += ['-x!' + p]
     zip_hint = ['C:/Program Files/7-Zip'] if WINDOWS else []
     zip_exe = which('7z', zip_hint)
-    cmd = [zip_exe, 'a', output_file, os.path.join(directory, '*'), '-mx9'] + exclude_args # mx9=Ultra compression
+    zip_contents = directory if zip_root_directory else os.path.join(directory, '*')
+    cmd = [zip_exe, 'a', output_file, zip_contents, '-mx9'] + exclude_args # mx9=Ultra compression
   else:
     exclude_args = []
     for p in exclude_patterns: exclude_args += ["--exclude=" + p]
@@ -215,7 +218,7 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   zip_filename = add_zip_suffix(zip_filename, options)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
-  zip_up_directory(output_dir, zip_filename)
+  zip_up_directory(output_dir, zip_filename, options.zip_root_directory)
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
   # Upload LLVM
@@ -442,7 +445,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   zip_filename = add_zip_suffix(zip_filename, options)
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
-  zip_up_directory(output_dir, zip_filename)
+  zip_up_directory(output_dir, zip_filename, options.zip_root_directory)
 
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
@@ -468,7 +471,7 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   print 'Zipping up "' + zip_filename + '"'
   if os.path.isfile(zip_filename): os.remove(zip_filename)
 
-  zip_up_directory(emscripten_output_dir, zip_filename, ['.git', 'third_party/lzma.js/', '*.pyc'])
+  zip_up_directory(emscripten_output_dir, zip_filename, options.zip_root_directory, ['.git', 'third_party/lzma.js/', '*.pyc'])
 
   print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
 
@@ -521,6 +524,7 @@ def main():
   parser.add_option('--delete_uploaded_build_dirs', dest='delete_uploaded_build_dirs', action='store_true', default=False, help='If true, the build directories are removed after a successful upload.')
   parser.add_option('--7z', dest='compress_7zip', action='store_true', default=False, help='If true, compresses to .7z instead of .zip or .tar.gz.')
   parser.add_option('--zip', dest='compress_zip', action='store_true', default=False, help='If true, compresses to .zip instead of .tar.gz.')
+  parser.add_option('--zip_root_directory', dest='zip_root_directory', action='store_true', default=False, help='If true, the generated .zip/.7z file will have a common root directory under which all the zipped files reside. If false, the files are located in the zip without a common directory.')
 
   (options, args) = parser.parse_args(sys.argv)
 
