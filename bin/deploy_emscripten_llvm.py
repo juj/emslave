@@ -442,6 +442,8 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
     sys.exit(1)
   binaryen_binary_dir = binaryen_binary_dir[0]
   print 'Binaryen binary directory: ' + binaryen_binary_dir
+  binaryen_output_dir = os.path.join(output_dir, 'binaryen')
+  print 'Binaryen output directory: ' + binaryen_output_dir
 
   # Deploy all tools
   if os.path.isdir(output_dir):
