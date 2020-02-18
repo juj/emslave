@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import sys, os, shutil, glob, subprocess, time, platform, optparse, stat, re
 
 WINDOWS = False
@@ -11,7 +12,7 @@ if platform.mac_ver()[0] != '': OSX = True
 
 cmake_generator_identifiers = ['']
 if WINDOWS:
-  cmake_generator_identifiers += ['_vs2017', '_vs2015']
+  cmake_generator_identifiers += ['_vs2019', '_vs2017', '_vs2015']
 
 def exe_suffix(path):
   if WINDOWS: return path + '.exe'
@@ -69,7 +70,7 @@ def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames,
     fn = os.path.join(srcdir, f)
     if os.path.islink(fn):
       linkto = os.readlink(fn)
-      print 'Creating link ' + os.path.join(dstdir, f) + ' -> ' + linkto
+      print('Creating link ' + os.path.join(dstdir, f) + ' -> ' + linkto)
       os.symlink(linkto, os.path.join(dstdir, f))
     elif os.path.isfile(fn):
       dst_file = os.path.join(dstdir, f)
@@ -77,7 +78,7 @@ def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames,
       if not WINDOWS: # On Windows the file read only bits from DLLs in Program Files are copied, which is not desirable.
         shutil.copymode(fn, dst_file)
       if not WINDOWS and strip_debugging_symbols_on_executables and (stat.S_IXUSR & os.stat(dst_file)[stat.ST_MODE]):
-        print 'Stripping debug info from file ' + dst_file
+        print('Stripping debug info from file ' + dst_file)
         try:
           subprocess.check_call(['strip', dst_file])
         except:
@@ -89,10 +90,10 @@ def copy_all_files_in_dir(srcdir, dstdir):
 def upload_to_s3(filename, out_s3_addr, options):
   if options.upload_s3:
     cmd = ['aws', 's3', 'cp', filename, out_s3_addr]
-    print 'Uploading ' + filename + ' to ' + out_s3_addr + '...'
-    print str(cmd)
+    print('Uploading ' + filename + ' to ' + out_s3_addr + '...')
+    print(str(cmd))
     subprocess.check_call(cmd)
-    print 'Done.'
+    print('Done.')
 
 def add_zip_suffix(path, options):
   if options.compress_7zip:
@@ -118,7 +119,7 @@ def zip_up_directory(directory, output_file, zip_root_directory, exclude_pattern
     for p in exclude_patterns: exclude_args += ["--exclude=" + p]
     # Specially important is the 'h' parameter to retain symlinks, otherwise the Clang files will blow up to half a gig.
     cmd = ['tar', 'cvhzf', output_file] + exclude_args + [os.path.basename(directory)]
-  print str(cmd)
+  print(str(cmd))
   env = os.environ.copy()
   env['GZIP'] = '-9' # http://superuser.com/questions/514260/how-to-obtain-maximum-compression-with-tar-gz
   proc = subprocess.Popen(cmd, env=env, cwd=os.path.dirname(directory))
@@ -140,7 +141,7 @@ def update_emsdk_tags(emsdk_dir, force=False):
 def list_files_in_s3_directory(directory):
   if not directory.endswith('/'): directory += '/'
   cmd = ['aws', 's3', 'ls', directory]
-  print str(cmd)
+  print(str(cmd))
   files = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0]
   r = re.compile('\d+-\d+-\d+\s+\d+:\d+:\d+\s+\d+\s+(.*)')
 
@@ -154,7 +155,7 @@ def list_files_in_s3_directory(directory):
 def create_directory_index(url, options):
   if options.upload_s3:
     files = list_files_in_s3_directory(url)
-    files = filter(lambda x: x.endswith('.tar.gz') or x.endswith('.zip'), files)
+    files = list(filter(lambda x: x.endswith('.tar.gz') or x.endswith('.zip'), files))
 
     # Sort the files on descending timestamps. This is possible without a specical predicate, because the files in the directory have exactly same format with descending fixed space fields Y -> M -> D -> H -> Min.
     files.sort(reverse=True)
@@ -167,21 +168,23 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
 
   # Verify that versions match.
   llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
-  print 'LLVM version: ' + llvm_version
+  print('LLVM version: ' + llvm_version)
   clang_version = open(os.path.join(llvm_source_dir, 'tools', 'clang', 'emscripten-version.txt'), 'r').read().strip()
-  print 'Clang version: ' + clang_version
+  print('Clang version: ' + clang_version)
   emscripten_version = open(os.path.join(emscripten_source_dir, 'emscripten-version.txt'), 'r').read().strip()
-  print 'Emscripten version: ' + emscripten_version
+  print('Emscripten version: ' + emscripten_version)
   if llvm_version != clang_version or llvm_version != emscripten_version or clang_version != emscripten_version:
-    print >> sys.stderr, 'Repository version mismatch!'
+    print('Repository version mismatch!')
     sys.exit(1)
 
   if os.path.isdir(output_dir) and len(os.listdir(output_dir)) > 0:
-    print >> sys.stderr, 'Output directory "' + output_dir + '" exists and is not empty!'
+    print('Output directory "' + output_dir + '" exists and is not empty!')
     sys.exit(1)
-  mkdir_p(output_dir)
+#  bin_dir = os.path.join(output_dir, 'bin')
+  bin_dir = output_dir#os.path.join(output_dir, 'bin')
+  mkdir_p(bin_dir)
 
-  shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
+  shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(bin_dir, 'emscripten-version.txt'))
   ignored_suffixes = ['ilk', 'pdb']
   ignored_basenames = ['arcmt-test', 'bugpoint', 'c-arcmt-test', 'c-index-text', 'llvm-tblgen', 'clang-tblgen']
   # The LLVM build output binaries directory varies depending on if a CMake multigenerator was used (VS2015 or Xcode IDEs), or if a CMake single-generator was used (Unix Makefiles)
@@ -190,24 +193,27 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   if not os.path.isfile(os.path.join(llvm_binary_dir, exe_suffix('clang'))):
     llvm_binary_dir = os.path.join(llvm_build_dir, 'bin')
 
-  blacklisted_copy_all_files_in_dir(llvm_binary_dir, ignored_suffixes, ignored_basenames, output_dir, strip_debugging_symbols_on_executables=True)
+  blacklisted_copy_all_files_in_dir(llvm_binary_dir, ignored_suffixes, ignored_basenames, bin_dir, strip_debugging_symbols_on_executables=True)
+
+#  for d in ['include', 'libexec', 'share']:
+#    copy_all_files_in_dir(os.path.join(llvm_binary_dir, d), os.path.join(output_dir, d))
 
   # VS2015 runtime:
   if WINDOWS:
     # Nb. hardcoded to look in default install locations. TODO: make more flexible if needed.
     if deploy_x64:
-      copy_all_files_in_dir('C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\redist\\x64\\Microsoft.VC140.CRT', output_dir)
-      copy_all_files_in_dir('C:\\Program Files (x86)\\Windows Kits\\10\\Redist\\ucrt\\DLLs\\x64', output_dir)
+      copy_all_files_in_dir('C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\redist\\x64\\Microsoft.VC140.CRT', bin_dir)
+      copy_all_files_in_dir('C:\\Program Files (x86)\\Windows Kits\\10\\Redist\\ucrt\\DLLs\\x64', bin_dir)
     else:
-      copy_all_files_in_dir('C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\redist\\x86\\Microsoft.VC140.CRT', output_dir)
-      copy_all_files_in_dir('C:\\Program Files (x86)\\Windows Kits\\10\\Redist\\ucrt\\DLLs\\x86', output_dir)
+      copy_all_files_in_dir('C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\redist\\x86\\Microsoft.VC140.CRT', bin_dir)
+      copy_all_files_in_dir('C:\\Program Files (x86)\\Windows Kits\\10\\Redist\\ucrt\\DLLs\\x86', bin_dir)
 
   # Emscripten Optimizer
   emscripten_optimizer_binary_dir = os.path.join(optimizer_build_dir, cmake_config_to_deploy)
   if not os.path.isfile(os.path.join(emscripten_optimizer_binary_dir, exe_suffix('optimizer'))):
     emscripten_optimizer_binary_dir = os.path.join(optimizer_build_dir)
 
-  blacklisted_copy_all_files_in_dir(emscripten_optimizer_binary_dir, ignored_suffixes, [], output_dir)
+  blacklisted_copy_all_files_in_dir(emscripten_optimizer_binary_dir, ignored_suffixes, [], bin_dir)
 
   # Find where Binaryen was built to.
   binaryen_src_dir = os.path.join(options.emsdk_dir, 'binaryen', 'master')
@@ -217,29 +223,29 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
     binaryen_binary_dirs += [
       os.path.join(options.emsdk_dir, 'binaryen', 'master' + d + '_' + build_bitness + 'bit_binaryen', 'bin') # CMake single&multigenerator builds
     ]
-  binaryen_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('asm2wasm'))), binaryen_binary_dirs)
+  binaryen_binary_dir = list(filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('asm2wasm'))), binaryen_binary_dirs))
   if len(binaryen_binary_dir) == 0:
-    print 'Could not find compiled Binaryen asm2wasm(.exe)!'
+    print('Could not find compiled Binaryen asm2wasm(.exe)!')
     sys.exit(1)
   binaryen_binary_dir = binaryen_binary_dir[0]
-  print 'Binaryen binary directory: ' + binaryen_binary_dir
+  print('Binaryen binary directory: ' + binaryen_binary_dir)
 
   # Print git commit versions from each repository
   git = which('git')
-  open(os.path.join(output_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
-  open(os.path.join(output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
-  open(os.path.join(output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
+  open(os.path.join(bin_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0].decode('utf-8'))
+  open(os.path.join(bin_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0].decode('utf-8'))
+  open(os.path.join(bin_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
 
-  deploy_binaryen(binaryen_src_dir, binaryen_binary_dir, output_dir)
+  deploy_binaryen(binaryen_src_dir, binaryen_binary_dir, bin_dir)
 
   # Zip up LLVM
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
   zip_filename = add_zip_suffix(zip_filename, options)
-  print 'Zipping up "' + zip_filename + '"'
+  print('Zipping up "' + zip_filename + '"')
   if os.path.isfile(zip_filename): os.remove(zip_filename)
   zip_up_directory(output_dir, zip_filename, options.zip_root_directory)
-  print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
+  print(zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.')
 
   # Upload LLVM
   if s3_llvm_deployment_url:
@@ -252,15 +258,15 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
     upload_to_s3(zip_url, url_join(s3_llvm_deployment_url, os.path.basename(canonical_zip_filename)), options)
 
     if options.delete_uploaded_files:
-      print 'Deleting temporary directory "' + output_dir + '"'
+      print('Deleting temporary directory "' + output_dir + '"')
       shutil.rmtree(output_dir)
-      print 'Deleting temporary file "' + zip_filename + '"'
+      print('Deleting temporary file "' + zip_filename + '"')
       os.remove(zip_filename)
 
   # Re-create directory index in the uploaded directory.
   create_directory_index(s3_llvm_deployment_url, options)
 
-  print 'Done. Emscripten LLVM deployed to "' + output_dir + '".'
+  print('Done. Emscripten LLVM deployed to "' + output_dir + '".')
 
 def deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url):
   # Make and upload documentation if desired.
@@ -268,11 +274,11 @@ def deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url):
   subprocess.Popen(['make', 'html'], cwd=os.path.join(emscripten_output_dir, 'site')).communicate()
 
   cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'site', 'build', 'text'), url_join(s3_docs_deployment_url, 'text')]
-  print str(cmd)
+  print(str(cmd))
   subprocess.check_call(cmd)
 
   cmd = ['aws', 's3', 'cp', '--recursive', os.path.join(emscripten_output_dir, 'site', 'build', 'html'), url_join(s3_docs_deployment_url, 'html')]
-  print str(cmd)
+  print(str(cmd))
   subprocess.check_call(cmd)
 
 def ver_is_equal_or_newer_than(a, b):
@@ -299,7 +305,7 @@ def binaryen_version_needed_by_emscripten(emscripten_ver, binaryen_tags):
 def run(cmd, cwd='.'):
   cwd = os.path.abspath(cwd)
   prev_cwd = os.getcwd()
-  print str(cmd) + ' in directory ' + cwd
+  print(str(cmd) + ' in directory ' + cwd)
   try:
     os.chdir(cwd)
     return subprocess.check_call(cmd)
@@ -325,8 +331,8 @@ def is_emscripten_tag_built(emsdk_dir, tag, build_x86):
     if 'emscripten-llvm-e' + tag in existing_tags_on_s3: return True
 
     return False
-  except Exception, e:
-    print >> sys.stderr, str(e)
+  except Exception as e:
+    print(str(e))
     return False
 
 def mark_tag_built(emsdk_dir, tag, build_x86):
@@ -354,7 +360,7 @@ def git_pull_emsdk(emsdk_dir):
 
 
 def uninstall_built_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, build_x86):
-  print 'Uninstalling in emsdk_dir=' + emsdk_dir + ' tag_or_branch=' + tag_or_branch + ' x86=' + str(build_x86)
+  print('Uninstalling in emsdk_dir=' + emsdk_dir + ' tag_or_branch=' + tag_or_branch + ' x86=' + str(build_x86))
   build_bitness = '32' if build_x86 else '64'
 
   binaryen_tags = load_binaryen_tags(emsdk_dir)
@@ -369,7 +375,7 @@ def uninstall_built_emsdk_tag_or_branch(emsdk_dir, tag_or_branch, build_x86):
   run(['python', '-u', os.path.join(emsdk_dir, 'emsdk'), 'uninstall', 'binaryen-tag-' + binaryen_version + '-' + build_bitness + 'bit'] + args)
 
 def deploy_binaryen(binaryen_src_dir, binaryen_binary_dir, output_dir):
-  print binaryen_binary_dir + ' -> ' + output_dir
+  print(binaryen_binary_dir + ' -> ' + output_dir)
   binaryen_output_dir = os.path.join(output_dir, 'binaryen')
   mkdir_p(os.path.join(binaryen_output_dir, 'bin'))
   copy_all_files_in_dir(binaryen_binary_dir, os.path.join(binaryen_output_dir, 'bin'))
@@ -398,77 +404,87 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   build_bitness = '32' if build_x86 else '64'
   binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, load_binaryen_tags(emsdk_dir))
 
-  llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'src')
+  if tag_or_branch == 'master':
+    llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'fastcomp', 'src')
+  else:
+    llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'src')
 
   # Find where LLVM/Clang was built to.
   clang_binary_dirs = []
   for d in cmake_generator_identifiers:
     clang_binary_dirs += [
+      os.path.join(emsdk_dir, 'clang', 'fastcomp', 'build_' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + d + '_' + build_bitness, 'bin') # CMake singlegenerator build (Makefiles)
     ]
-  clang_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('clang'))), clang_binary_dirs)
+  clang_binary_dir = list(filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('clang'))), clang_binary_dirs))
   if len(clang_binary_dir) == 0:
-    print 'Could not find compiled clang(.exe) in and of Clang binary directories:\n' + '\n'.join(clang_binary_dirs)
+    print('Could not find compiled clang(.exe) in any of Clang binary directories:\n' + '\n'.join(clang_binary_dirs))
     sys.exit(1)
   clang_binary_dir = clang_binary_dir[0]
-  print 'LLVM/Clang binary directory: ' + clang_binary_dir
+  print('LLVM/Clang binary directory: ' + clang_binary_dir)
 
   # Find where Emscripten optimizer was built to.
   opt_binary_dirs = []
   for d in cmake_generator_identifiers:
     opt_binary_dirs += [
+      os.path.join(emsdk_dir, 'emscripten', tag_or_branch + d + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + d + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + d + '_' + build_bitness + 'bit_optimizer') # CMake singlegenerator build (Makefiles)
     ]
-  opt_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('optimizer'))), opt_binary_dirs)
+  opt_binary_dir = list(filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('optimizer'))), opt_binary_dirs))
   if len(opt_binary_dir) == 0:
-    print 'Could not find compiled optimizer(.exe)!'
+    print('Could not find compiled optimizer(.exe) in any of directories:\n' + '\n'.join(opt_binary_dirs))
     sys.exit(1)
   opt_binary_dir = opt_binary_dir[0]
-  print 'Optimizer binary directory: ' + opt_binary_dir
+  print('Optimizer binary directory: ' + opt_binary_dir)
 
-  binaryen_src_dir = os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version)
+  print(tag_or_branch)
+  if tag_or_branch == 'master':
+    binaryen_src_dir = os.path.join(emsdk_dir, 'binaryen', tag_or_branch)
+  else:
+    binaryen_src_dir = os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version)
 
   # Find where Binaryen was built to.
   binaryen_binary_dirs = []
   for d in cmake_generator_identifiers:
     binaryen_binary_dirs += [
+      os.path.join(emsdk_dir, 'binaryen', tag_or_branch + d + '_' + build_bitness + 'bit_binaryen', 'bin'), # CMake single&multigenerator builds
       os.path.join(emsdk_dir, 'binaryen', 'tag-' + binaryen_version + d + '_' + build_bitness + 'bit_binaryen', 'bin') # CMake single&multigenerator builds
     ]
-  binaryen_binary_dir = filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('asm2wasm'))), binaryen_binary_dirs)
+  binaryen_binary_dir = list(filter(lambda x: os.path.isfile(os.path.join(x, exe_suffix('asm2wasm'))), binaryen_binary_dirs))
   if len(binaryen_binary_dir) == 0:
-    print 'Could not find compiled Binaryen asm2wasm(.exe)!'
+    print('Could not find compiled Binaryen asm2wasm(.exe) in any of directories:\n' + '\n'.join(binaryen_binary_dirs))
     sys.exit(1)
   binaryen_binary_dir = binaryen_binary_dir[0]
-  print 'Binaryen binary directory: ' + binaryen_binary_dir
+  print('Binaryen binary directory: ' + binaryen_binary_dir)
   binaryen_output_dir = os.path.join(output_dir, 'binaryen')
-  print 'Binaryen output directory: ' + binaryen_output_dir
+  print('Binaryen output directory: ' + binaryen_output_dir)
 
   # Deploy all tools
   if os.path.isdir(output_dir):
-    print 'Old output directory ' + output_dir + ' exists, cleaning.'
+    print('Old output directory ' + output_dir + ' exists, cleaning.')
     shutil.rmtree(output_dir)
-  print 'Generating ' + output_dir
-  print clang_binary_dir + ' -> ' + output_dir
+  print('Generating ' + output_dir)
+  print(clang_binary_dir + ' -> ' + output_dir)
   shutil.copytree(clang_binary_dir, output_dir)
-  print opt_binary_dir + ' -> ' + output_dir
+  print(opt_binary_dir + ' -> ' + output_dir)
   shutil.copy(os.path.join(opt_binary_dir, exe_suffix('optimizer')), os.path.join(output_dir, exe_suffix('optimizer')))
 
   deploy_binaryen(binaryen_src_dir, binaryen_binary_dir, output_dir)
 
-  print os.path.join(llvm_source_dir, 'emscripten-version.txt') + ' -> ' + os.path.join(output_dir, 'emscripten-version.txt')
+  print(os.path.join(llvm_source_dir, 'emscripten-version.txt') + ' -> ' + os.path.join(output_dir, 'emscripten-version.txt'))
   shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
   open(os.path.join(binaryen_output_dir, 'binaryen-version.txt'), 'w').write(binaryen_version)
 
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
   zip_filename = add_zip_suffix(zip_filename, options)
-  print 'Zipping up "' + zip_filename + '"'
+  print('Zipping up "' + zip_filename + '"')
   if os.path.isfile(zip_filename): os.remove(zip_filename)
   zip_up_directory(output_dir, zip_filename, options.zip_root_directory)
 
-  print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
+  print(zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.')
 
   if options.deploy_llvm:
     zip_url = url_join(s3_llvm_deployment_url, os.path.basename(zip_filename))
@@ -477,7 +493,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
 def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options):
   if options.git_clean:
-    print 'Git cleaning Emscripten directory for zipping it up..'
+    print('Git cleaning Emscripten directory for zipping it up..')
     subprocess.Popen(['git', 'clean', '-xdf'], cwd=emscripten_source_dir)
     time.sleep(3)
 
@@ -489,18 +505,18 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
   zip_filename = add_zip_suffix(zip_filename, options)
-  print 'Zipping up "' + zip_filename + '"'
+  print('Zipping up "' + zip_filename + '"')
   if os.path.isfile(zip_filename): os.remove(zip_filename)
 
   zip_up_directory(emscripten_output_dir, zip_filename, options.zip_root_directory, ['.git', 'third_party/lzma.js/', '*.pyc'])
 
-  print zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.'
+  print(zip_filename + ': ' + str(os.path.getsize(zip_filename)) + ' bytes.')
 
   # Print git commit versions from each repository
   git = which('git')
-  open(os.path.join(emscripten_output_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
-  open(os.path.join(emscripten_output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
-  open(os.path.join(emscripten_output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
+  open(os.path.join(emscripten_output_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0].decode('utf-8'))
+  open(os.path.join(emscripten_output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0].decode('utf-8'))
+  open(os.path.join(emscripten_output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
 
   if options.make_and_deploy_docs:
     deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url)
@@ -516,15 +532,15 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
     upload_to_s3(zip_url, url_join(s3_emscripten_deployment_url, os.path.basename(canonical_zip_filename)), options)
 
     if options.delete_uploaded_files:
-      print 'Deleting temporary directory "' + emscripten_output_dir + '"'
+      print('Deleting temporary directory "' + emscripten_output_dir + '"')
       shutil.rmtree(emscripten_output_dir)
-      print 'Deleting temporary file "' + zip_filename + '"'
+      print('Deleting temporary file "' + zip_filename + '"')
       os.remove(zip_filename)
 
   # Re-create directory index in the uploaded directory.
   create_directory_index(s3_emscripten_deployment_url, options)
 
-  print 'Done. Emscripten deployed to "' + emscripten_output_dir + '".'
+  print('Done. Emscripten deployed to "' + emscripten_output_dir + '".')
 
 def main():
   usage_str = 'Usage: deploy_emscripten_llvm.py '
@@ -550,33 +566,33 @@ def main():
   (options, args) = parser.parse_args(sys.argv)
 
   # Are we targeting a Nightly build? (automatically dated zip of current contents)
-  nightly = (options.build_tag is '' and options.build_branch is '')
+  nightly = (options.build_tag == '' and options.build_branch == '')
 
   if not options.emsdk_dir:
-    print >> sys.stderr, 'Please specify --emsdk_dir /path/to/emsdk'
+    print('Please specify --emsdk_dir /path/to/emsdk')
     sys.exit(1)
 
-  print('Latest unbuilt tag is ' + latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit))
   if options.build_tag == 'latest_tag':
+    print('Latest unbuilt tag is ' + latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit))
     git_pull_emsdk(options.emsdk_dir)
     update_emsdk_tags(options.emsdk_dir)
     options.build_tag = latest_unbuilt_tag(options.emsdk_dir, options.deploy_32bit)
-    print 'Latest unbuilt tag: ' + str(options.build_tag)
+    print('Latest unbuilt tag: ' + str(options.build_tag))
     if not options.build_tag:
-      print 'No unbuilt tags left, quitting.'
+      print('No unbuilt tags left, quitting.')
       sys.exit(0)
     if not ver_is_equal_or_newer_than(options.build_tag, '1.36.13'):
-      print 'Skipping building tags older than 1.36.13.'
+      print('Skipping building tags older than 1.36.13.')
       sys.exit(0)
 
   options.emsdk_dir = os.path.abspath(options.emsdk_dir)
-  print 'Path to emsdk: ' + options.emsdk_dir
+  print('Path to emsdk: ' + options.emsdk_dir)
   if not os.path.isfile(os.path.join(options.emsdk_dir, 'emsdk')):
-    print >> sys.stderr, '--emsdk_dir "' + options.emsdk_dir + '" does not point to a correct emsdk root directory (expected it to contain the file "emsdk")'
+    print('--emsdk_dir "' + options.emsdk_dir + '" does not point to a correct emsdk root directory (expected it to contain the file "emsdk")')
     sys.exit(1)
 
   if not options.cmake_config:
-    print >> sys.stderr, 'Please specify --cmake_config Debug|Release|RelWithDebInfo|MinSizeRel'
+    print('Please specify --cmake_config Debug|Release|RelWithDebInfo|MinSizeRel')
     sys.exit(1)
 
   if WINDOWS: s3_subdirectory = 'win'
@@ -591,6 +607,8 @@ def main():
 
   llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
 
+  emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', options.build_branch)
+
   if nightly:
     llvm_build_dirname = 'build_incoming'
     optimizer_build_dirname = 'incoming'
@@ -603,7 +621,6 @@ def main():
     optimizer_build_dirname += '_optimizer'
 
     llvm_build_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
-    emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', 'incoming')
     optimizer_build_dir = os.path.join(options.emsdk_dir, 'emscripten', optimizer_build_dirname)
     binaryen_build_dir = ''
 
@@ -611,14 +628,14 @@ def main():
     if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
     if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
 
-    emscripten_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0])
-    llvm_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0])
-    clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0])
+    emscripten_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0].decode('utf-8'))
+    llvm_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0].decode('utf-8'))
+    clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
     newest_time = max(emscripten_git_time, llvm_git_time, clang_git_time)
 
     output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
     if os.path.isdir(output_dir):
-      print 'Deleting old output directory ' + output_dir
+      print('Deleting old output directory ' + output_dir)
       shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
 
     if options.deploy_llvm:
@@ -644,13 +661,20 @@ def main():
 
     output_dir = os.path.join(options.emsdk_dir, 'clang', 'emscripten-llvm-e' + llvm_version)
     if os.path.isdir(output_dir):
-      print 'Deleting old output directory ' + output_dir
+      print('Deleting old output directory ' + output_dir)
       shutil.rmtree(output_dir)
 
     s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/tag/' + s3_subdirectory
     deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
 
     mark_tag_built(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.deploy_32bit)
+
+    if options.deploy_emscripten:
+      emscripten_output_dir = os.path.join(options.emsdk_dir, 'emscripten', "emscripten-" + llvm_version)
+
+      s3_emscripten_deployment_url = 's3://mozilla-games/emscripten/packages/emscripten/nightly/' + ('win' if WINDOWS else 'linux')
+      s3_docs_deployment_url = 's3://mozilla-games/emscripten/docs/incoming/'
+      deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_dir, s3_emscripten_deployment_url, s3_docs_deployment_url, options)
 
     if options.delete_uploaded_build_dirs:
       uninstall_built_emsdk_tag_or_branch(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.deploy_32bit)
