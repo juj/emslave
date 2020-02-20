@@ -416,6 +416,9 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   for d in cmake_generator_identifiers:
     clang_binary_dirs += [
       os.path.join(llvm_dir, 'build_' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
+      os.path.join(llvm_dir, 'build_' + tag_or_branch + d + '_' + build_bitness, 'bin'), # CMake singlegenerator build (Visual Studio, XCode)
+      os.path.join(emsdk_dir, 'clang', 'fastcomp', 'build_' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
+      os.path.join(emsdk_dir, 'clang', 'fastcomp', 'build_' + tag_or_branch + d + '_' + build_bitness, 'bin'), # CMake singlegenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + d + '_' + build_bitness, 'bin') # CMake singlegenerator build (Makefiles)
     ]
@@ -431,6 +434,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   for d in cmake_generator_identifiers:
     opt_binary_dirs += [
       os.path.join(emsdk_dir, 'emscripten', tag_or_branch + d + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
+      os.path.join(emsdk_dir, 'emscripten', tag_or_branch + d + '_' + build_bitness + 'bit_optimizer'), # CMake singlegenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + d + '_' + build_bitness + 'bit_optimizer', cmake_build_type), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'emscripten', 'tag-' + tag_or_branch + d + '_' + build_bitness + 'bit_optimizer') # CMake singlegenerator build (Makefiles)
     ]
