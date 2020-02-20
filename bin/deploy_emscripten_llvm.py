@@ -234,7 +234,8 @@ def deploy_emscripten_llvm_clang(llvm_source_dir, llvm_build_dir, emscripten_sou
   git = which('git')
   open(os.path.join(bin_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0].decode('utf-8'))
   open(os.path.join(bin_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0].decode('utf-8'))
-  open(os.path.join(bin_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
+  if not options.wasm_backend:
+    open(os.path.join(bin_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
 
   deploy_binaryen(binaryen_src_dir, binaryen_binary_dir, bin_dir)
 
@@ -404,8 +405,9 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   build_bitness = '32' if build_x86 else '64'
   binaryen_version = binaryen_version_needed_by_emscripten(tag_or_branch, load_binaryen_tags(emsdk_dir))
 
+  llvm_dir = os.path.join(options.emsdk_dir, 'llvm', 'git') if options.wasm_backend else os.path.join(options.emsdk_dir, 'clang', 'fastcomp')
   if tag_or_branch == 'master':
-    llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'fastcomp', 'src')
+    llvm_source_dir = os.path.join(llvm_dir, 'src')
   else:
     llvm_source_dir = os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'src')
 
@@ -413,7 +415,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   clang_binary_dirs = []
   for d in cmake_generator_identifiers:
     clang_binary_dirs += [
-      os.path.join(emsdk_dir, 'clang', 'fastcomp', 'build_' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
+      os.path.join(llvm_dir, 'build_' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + d + '_' + build_bitness, cmake_build_type, 'bin'), # CMake multigenerator build (Visual Studio, XCode)
       os.path.join(emsdk_dir, 'clang', 'tag-e' + tag_or_branch, 'build_tag-e' + tag_or_branch + d + '_' + build_bitness, 'bin') # CMake singlegenerator build (Makefiles)
     ]
@@ -473,9 +475,10 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   deploy_binaryen(binaryen_src_dir, binaryen_binary_dir, output_dir)
 
-  print(os.path.join(llvm_source_dir, 'emscripten-version.txt') + ' -> ' + os.path.join(output_dir, 'emscripten-version.txt'))
-  shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
-  open(os.path.join(binaryen_output_dir, 'binaryen-version.txt'), 'w').write(binaryen_version)
+  if not options.wasm_backend:
+    print(os.path.join(llvm_source_dir, 'emscripten-version.txt') + ' -> ' + os.path.join(output_dir, 'emscripten-version.txt'))
+    shutil.copyfile(os.path.join(llvm_source_dir, 'emscripten-version.txt'), os.path.join(output_dir, 'emscripten-version.txt'))
+    open(os.path.join(binaryen_output_dir, 'binaryen-version.txt'), 'w').write(binaryen_version)
 
   zip_filename = output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
@@ -516,7 +519,8 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   git = which('git')
   open(os.path.join(emscripten_output_dir, 'emscripten-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=emscripten_source_dir).communicate()[0].decode('utf-8'))
   open(os.path.join(emscripten_output_dir, 'llvm-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=llvm_source_dir).communicate()[0].decode('utf-8'))
-  open(os.path.join(emscripten_output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
+  if not options.wasm_backend:
+    open(os.path.join(emscripten_output_dir, 'clang-git-commit.txt'), 'w').write(subprocess.Popen([git, 'log', '-n1'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
 
   if options.make_and_deploy_docs:
     deploy_emscripten_docs(emscripten_output_dir, s3_docs_deployment_url)
@@ -562,6 +566,7 @@ def main():
   parser.add_option('--7z', dest='compress_7zip', action='store_true', default=False, help='If true, compresses to .7z instead of .zip or .tar.gz.')
   parser.add_option('--zip', dest='compress_zip', action='store_true', default=False, help='If true, compresses to .zip instead of .tar.gz.')
   parser.add_option('--zip_root_directory', dest='zip_root_directory', action='store_true', default=False, help='If true, the generated .zip/.7z file will have a common root directory under which all the zipped files reside. If false, the files are located in the zip without a common directory.')
+  parser.add_option('--wasm_backend', dest='wasm_backend', action='store_true', default=False, help='If true, deploying Wasm backend.')
 
   (options, args) = parser.parse_args(sys.argv)
 
@@ -605,7 +610,8 @@ def main():
   # Compute the time of the most recent git changes to timestamp the generated build
   git = which('git')
 
-  llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', 'src')
+  llvm_dir = os.path.join(options.emsdk_dir, 'llvm', 'git') if options.wasm_backend else os.path.join(options.emsdk_dir, 'clang', 'fastcomp')
+  llvm_source_dir = os.path.join(llvm_dir, 'src')
 
   emscripten_source_dir = os.path.join(options.emsdk_dir, 'emscripten', options.build_branch)
 
@@ -620,7 +626,7 @@ def main():
     optimizer_build_dirname += '_' + build_bitness +'bit'
     optimizer_build_dirname += '_optimizer'
 
-    llvm_build_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', llvm_build_dirname)
+    llvm_build_dir = os.path.join(llvm_dir, llvm_build_dirname)
     optimizer_build_dir = os.path.join(options.emsdk_dir, 'emscripten', optimizer_build_dirname)
     binaryen_build_dir = ''
 
@@ -633,7 +639,7 @@ def main():
     clang_git_time = int(subprocess.Popen([git, 'log', '-n1', '--format=format:%at'], stdout=subprocess.PIPE, cwd=os.path.join(llvm_source_dir, 'tools', 'clang')).communicate()[0].decode('utf-8'))
     newest_time = max(emscripten_git_time, llvm_git_time, clang_git_time)
 
-    output_dir = os.path.join(options.emsdk_dir, 'clang', 'fastcomp', "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
+    output_dir = os.path.join(llvm_dir, "emscripten-llvm-e" + llvm_version + '-' + time.strftime("%Y_%m_%d_%H_%M", time.gmtime(newest_time)))
     if os.path.isdir(output_dir):
       print('Deleting old output directory ' + output_dir)
       shutil.rmtree(output_dir) # Output directory is generated via a timestamp - it shouldn't exist.
@@ -655,9 +661,12 @@ def main():
     if options.build_tag:
       llvm_source_dir = os.path.join(options.emsdk_dir, 'clang', 'tag-e' + options.build_tag, 'src')
 
-    llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
-    if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
-    if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
+    if options.wasm_backend:
+      llvm_version = 'upstream' # TODO
+    else:
+      llvm_version = open(os.path.join(llvm_source_dir, 'emscripten-version.txt'), 'r').read().strip()
+      if llvm_version.startswith('"'): llvm_version = llvm_version[1:]
+      if llvm_version.endswith('"'): llvm_version = llvm_version[:-1]
 
     output_dir = os.path.join(options.emsdk_dir, 'clang', 'emscripten-llvm-e' + llvm_version)
     if os.path.isdir(output_dir):
