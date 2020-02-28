@@ -60,18 +60,23 @@ def which(program, hint_paths=[]):
   return None
 
 # Copies all files from src to dst, but ignores ones with specific suffixes and file basenames
-def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames, dstdir, strip_debugging_symbols_on_executables=False):
+def blacklisted_copy_all_files_in_dir(srcdir, ignore_suffixes, ignore_basenames, dstdir, recursive=False, strip_debugging_symbols_on_executables=False):
+  if not os.path.isdir(dstdir):
+    mkdir_p(dstdir)
+
   for f in os.listdir(srcdir):
     basename, ext = os.path.splitext(f)
     if ext.startswith('.'): ext = ext[1:]
     if ext in ignore_suffixes: continue
-    if basename in ignore_basenames: continue
+    if basename in ignore_basenames or f in ignore_basenames: continue
 
     fn = os.path.join(srcdir, f)
     if os.path.islink(fn):
       linkto = os.readlink(fn)
       print('Creating link ' + os.path.join(dstdir, f) + ' -> ' + linkto)
       os.symlink(linkto, os.path.join(dstdir, f))
+    elif recursive and os.path.isdir(fn):
+      blacklisted_copy_all_files_in_dir(fn, ignore_suffixes, ignore_basenames, os.path.join(dstdir, f), recursive, strip_debugging_symbols_on_executables)
     elif os.path.isfile(fn):
       dst_file = os.path.join(dstdir, f)
       shutil.copyfile(fn, dst_file)
@@ -474,6 +479,10 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
   print('Generating ' + output_dir)
   print(clang_binary_dir + ' -> ' + output_dir)
   shutil.copytree(clang_binary_dir, output_dir)
+
+  # Copy LLVM license
+  license_path = os.path.join(llvm_source_dir, 'llvm') if options.wasm_backend else llvm_source_dir
+  shutil.copyfile(os.path.join(license_path, 'LICENSE.txt'), os.path.join(output_dir, 'LICENSE.txt'))
   print(opt_binary_dir + ' -> ' + output_dir)
   shutil.copy(os.path.join(opt_binary_dir, exe_suffix('optimizer')), os.path.join(output_dir, exe_suffix('optimizer')))
 
@@ -507,7 +516,12 @@ def deploy_emscripten(llvm_source_dir, emscripten_source_dir, emscripten_output_
   if os.path.isdir(emscripten_output_dir):
     shutil.rmtree(emscripten_output_dir)
   IGNORE_PATTERNS = ('*.pyc','.git')
-  shutil.copytree(emscripten_source_dir, emscripten_output_dir, ignore=shutil.ignore_patterns(*IGNORE_PATTERNS))
+
+  closure_filter = ['google-closure-compiler-osx', 'google-closure-compiler-linux'] if WINDOWS else ['google-closure-compiler-windows']
+
+  # Copies all files from src to dst, but ignores ones with specific suffixes and file basenames
+  blacklisted_copy_all_files_in_dir(emscripten_source_dir, IGNORE_PATTERNS, ['docs', 'site', 'tests', 'websockify', '.git', '.gitattributes', '.gitignore', '.github'] + closure_filter, emscripten_output_dir, recursive=True)
+#  shutil.copytree(emscripten_source_dir, emscripten_output_dir, ignore=shutil.ignore_patterns(*IGNORE_PATTERNS))
 
   zip_filename = emscripten_output_dir
   if zip_filename.endswith('\\') or zip_filename.endswith('/'): zip_filename = zip_filename[:-1]
@@ -678,7 +692,8 @@ def main():
       shutil.rmtree(output_dir)
 
     s3_llvm_deployment_url = 's3://mozilla-games/emscripten/packages/llvm/tag/' + s3_subdirectory
-    deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
+    if options.deploy_llvm:
+      deploy_clang_optimizer_binaryen_tag(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.cmake_config, options.deploy_32bit, output_dir, options, s3_llvm_deployment_url)
 
     mark_tag_built(options.emsdk_dir, options.build_tag if options.build_tag else options.build_branch, options.deploy_32bit)
 
