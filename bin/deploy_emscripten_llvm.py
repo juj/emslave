@@ -482,7 +482,7 @@ def deploy_clang_optimizer_binaryen_tag(emsdk_dir, tag_or_branch, cmake_build_ty
 
   # Copy LLVM license
   license_path = os.path.join(llvm_source_dir, 'llvm') if options.wasm_backend else llvm_source_dir
-  shutil.copyfile(os.path.join(license_path, 'LICENSE.txt'), os.path.join(output_dir, 'LICENSE.txt'))
+  shutil.copyfile(os.path.join(license_path, 'LICENSE.TXT'), os.path.join(output_dir, 'LICENSE.TXT'))
   print(opt_binary_dir + ' -> ' + output_dir)
   shutil.copy(os.path.join(opt_binary_dir, exe_suffix('optimizer')), os.path.join(output_dir, exe_suffix('optimizer')))
 
